@@ -1,4 +1,4 @@
-# ML Prediction Pipeline — Time‑Series Regression (Conv1D + BiGRU)
+# ML Prediction Pipeline — Time‑Series Regression (CNN + GRU)
 
 Professional, end‑to‑end pipeline for **time‑series / tabular regression**:
 - **Model**: Conv1D → BiGRU → Dense (Keras/TensorFlow)
