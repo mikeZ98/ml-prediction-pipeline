@@ -7,7 +7,6 @@ Professional, end‑to‑end pipeline for **time‑series / tabular regression**
 - **Evaluation**: MAE/RMSE/R², learning curves, interactive HTML plots
 - **UX**: clean notebooks, repo structure ready for CI/packaging
 
-> Fits portfolio use‑cases and predictive maintenance demos. Works on CPU/GPU.
 
 ---
 
