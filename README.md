@@ -1,7 +1,7 @@
 # ML Prediction Pipeline — Time‑Series Regression (CNN + GRU)
 
 Professional, end‑to‑end pipeline for **time‑series / tabular regression**:
-- **Model**: Conv1D → BiGRU → Dense (Keras/TensorFlow)
+- **Model**: CNN → GRU → Dense (Keras/TensorFlow)
 - **Data processing**: `StandardScaler` for inputs/target, optional **One‑Hot** for categoricals
 - **Training artifacts**: model (`.keras`), scalers/encoders (`.gz`), `feature_config.json`
 - **Evaluation**: MAE/RMSE/R², learning curves, interactive HTML plots
