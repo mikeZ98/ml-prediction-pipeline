@@ -20,8 +20,9 @@ from typing import Any, Final
 
 import joblib
 
+from mlpp.config import DataConfig
 from mlpp.errors import ArtifactError, SchemaVersionError
-from mlpp.preprocess import FittedState
+from mlpp.preprocess import FeatureSchema, FittedState, Preprocessor
 
 #: Bumped whenever the manifest layout changes incompatibly. The loader rejects
 #: anything it does not recognise rather than guessing.
@@ -295,6 +296,51 @@ def read_manifest(session_dir: Path) -> SessionManifest:
         features=FeatureContract.from_dict(payload["features"], path),
         artifacts=_entries_from(payload.get("artifacts", []), path),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class LoadedSession:
+    """A session restored from disk: what it claims, and a preprocessor to use."""
+
+    session_dir: Path
+    manifest: SessionManifest
+    preprocessor: Preprocessor
+
+
+def load_session(session_dir: Path, cfg: DataConfig, *, use_onehot: bool = True) -> LoadedSession:
+    """Restore a session's manifest and a working Preprocessor from `session_dir`.
+
+    Validates that every file the manifest lists is actually present — the
+    cross-check whose absence let the committed reference run rot unnoticed.
+
+    Deliberately does not load the Keras model: that would drag TensorFlow into
+    this module, and scoring belongs to the predict CLI, not to the contract.
+
+    Raises `SchemaVersionError` for a version this build cannot read, and
+    `ArtifactError` when the manifest and the directory disagree.
+    """
+    manifest = read_manifest(session_dir)
+    absent = [e.filename for e in manifest.artifacts if not (session_dir / e.filename).is_file()]
+    if absent:
+        raise ArtifactError(
+            f"{session_dir}: manifest lists {len(absent)} file(s) that are not on disk: "
+            f"{sorted(absent)}"
+        )
+
+    features = manifest.features
+    schema = FeatureSchema(
+        numeric=features.numeric_columns,
+        categorical=features.categorical_columns,
+        output=features.output_column,
+    )
+    preprocessor = Preprocessor.restore(
+        cfg,
+        read_fitted_state(session_dir),
+        schema,
+        features.feature_names,
+        use_onehot=use_onehot,
+    )
+    return LoadedSession(session_dir=session_dir, manifest=manifest, preprocessor=preprocessor)
 
 
 def _missing_manifest_error(session_dir: Path, path: Path) -> ArtifactError:

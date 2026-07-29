@@ -69,6 +69,23 @@ def test_manifest_records_the_feature_contract_once(pipeline_cfg: PipelineConfig
     assert features.feature_names, "feature names must be recorded"
 
 
+def test_real_session_round_trips_through_load_session(pipeline_cfg: PipelineConfig) -> None:
+    """Round trip against a directory the pipeline actually produced, not a fixture."""
+    from mlpp.pipeline import run_pipeline
+    from mlpp.session import load_session
+
+    result = run_pipeline(pipeline_cfg, verbose=0)
+    loaded = load_session(result.session_dir, pipeline_cfg.data)
+
+    assert loaded.manifest.features.feature_names
+    assert loaded.preprocessor.n_features == len(loaded.manifest.features.feature_names)
+
+    frame = pd.read_csv(pipeline_cfg.data.test_dir / "test_A.csv")
+    x, y = loaded.preprocessor.transform(frame)
+    assert x.shape == (len(frame), loaded.preprocessor.n_features, 1)
+    assert y is not None
+
+
 def test_pipeline_evaluates_every_train_test_pair(
     pipeline_cfg: PipelineConfig, frame: pd.DataFrame
 ) -> None:
