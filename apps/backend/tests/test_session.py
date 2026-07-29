@@ -6,21 +6,33 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+import joblib
+import numpy as np
+import pandas as pd
 import pytest
 
+from mlpp.config import DataConfig
 from mlpp.errors import ArtifactError, SchemaVersionError
+from mlpp.preprocess import Preprocessor
 from mlpp.session import (
+    ENCODERS_FILE,
     MANIFEST_FILE,
+    OUTPUT_SCALER_FILE,
     ROLE_ENCODERS,
+    ROLE_OUTPUT_SCALER,
+    ROLE_SCALER,
     ROLE_STAGE_MODEL,
+    SCALER_FILE,
     SCHEMA_VERSION,
     FeatureContract,
     SessionWriter,
     prediction_analysis_filename,
+    read_fitted_state,
     read_manifest,
     stage_history_filename,
     stage_model_filename,
     training_curves_filename,
+    write_fitted_state,
 )
 
 CONTRACT = FeatureContract(
@@ -282,3 +294,74 @@ def test_malformed_artifact_entry_is_rejected(tmp_path: Path) -> None:
 def test_schema_version_error_is_an_artifact_error() -> None:
     """Callers that only care about 'bad artifact' should not need the subclass."""
     assert issubclass(SchemaVersionError, ArtifactError)
+
+
+# --- fitted-state persistence ----------------------------------------------
+
+
+def test_writer_reopens_an_existing_directory(tmp_path: Path) -> None:
+    """Constructing over an existing session dir must not fail or clobber it."""
+    session = tmp_path / "session"
+    session.mkdir()
+    (session / "keepme.txt").write_text("x", encoding="utf-8")
+    SessionWriter(session)
+    assert (session / "keepme.txt").is_file()
+
+
+def test_fitted_state_round_trip(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
+    """Persisted estimators must reproduce the original transform exactly."""
+    pre = Preprocessor(data_cfg).fit(frame)
+    writer = SessionWriter(data_cfg.output_dir / "session")
+    writer.set_features(
+        FeatureContract(
+            pre.schema.numeric, pre.schema.categorical, pre.schema.output, pre.feature_names
+        )
+    )
+    write_fitted_state(writer, pre.fitted_state)
+    writer.flush()
+
+    restored = Preprocessor.restore(
+        data_cfg, read_fitted_state(writer.session_dir), pre.schema, pre.feature_names
+    )
+    np.testing.assert_allclose(restored.transform(frame)[0], pre.transform(frame)[0])
+
+
+def test_write_fitted_state_registers_all_three_files(
+    frame: pd.DataFrame, data_cfg: DataConfig
+) -> None:
+    pre = Preprocessor(data_cfg).fit(frame)
+    writer = SessionWriter(data_cfg.output_dir / "session")
+    write_fitted_state(writer, pre.fitted_state)
+    roles = {a.role for a in writer._artifacts}  # noqa: SLF001 - inventory is the assertion
+    assert roles == {ROLE_SCALER, ROLE_OUTPUT_SCALER, ROLE_ENCODERS}
+    for name in (SCALER_FILE, OUTPUT_SCALER_FILE, ENCODERS_FILE):
+        assert (writer.session_dir / name).is_file()
+
+
+def test_encoders_file_holds_only_the_encoder(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
+    """Previously this bundled schema + feature_names — one of the three copies."""
+    pre = Preprocessor(data_cfg).fit(frame)
+    writer = SessionWriter(data_cfg.output_dir / "session")
+    write_fitted_state(writer, pre.fitted_state)
+    blob = joblib.load(writer.session_dir / ENCODERS_FILE)
+    assert not isinstance(blob, dict), "encoders.gz must be the encoder alone, not a bundle"
+
+
+def test_read_fitted_state_reports_every_missing_file(tmp_path: Path) -> None:
+    session = tmp_path / "session"
+    session.mkdir()
+    with pytest.raises(ArtifactError, match="missing fitted-state artifacts") as exc:
+        read_fitted_state(session)
+    for name in (SCALER_FILE, OUTPUT_SCALER_FILE, ENCODERS_FILE):
+        assert name in str(exc.value)
+
+
+def test_read_fitted_state_reports_a_partial_session(
+    frame: pd.DataFrame, data_cfg: DataConfig
+) -> None:
+    pre = Preprocessor(data_cfg).fit(frame)
+    writer = SessionWriter(data_cfg.output_dir / "session")
+    write_fitted_state(writer, pre.fitted_state)
+    (writer.session_dir / ENCODERS_FILE).unlink()
+    with pytest.raises(ArtifactError, match=ENCODERS_FILE):
+        read_fitted_state(writer.session_dir)
