@@ -450,29 +450,29 @@ rejects anything it does not recognise.
 
 #### Automated
 
-- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 2.2 No filename literals remain outside the owner
-- [x] 2.3 Type checking passes: `uv run mypy src/mlpp`
-- [x] 2.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 2.5 A real run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet`
+- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest` — e0e6825
+- [x] 2.2 No filename literals remain outside the owner — e0e6825
+- [x] 2.3 Type checking passes: `uv run mypy src/mlpp` — e0e6825
+- [x] 2.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — e0e6825
+- [x] 2.5 A real run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet` — e0e6825
 
 #### Manual
 
-- [x] 2.6 A freshly produced session directory contains `manifest.json` and no `feature_config.json` or `model_iter_NN_config.json`
-- [x] 2.7 Opening the manifest shows the feature contract exactly once, with no duplicated fields
+- [x] 2.6 A freshly produced session directory contains `manifest.json` and no `feature_config.json` or `model_iter_NN_config.json` — e0e6825
+- [x] 2.7 Opening the manifest shows the feature contract exactly once, with no duplicated fields — e0e6825
 
 ### Phase 3: Load-and-verify path
 
 #### Automated
 
-- [ ] 3.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [ ] 3.2 Round-trip test present and passing: `uv run pytest -k round_trip -v`
-- [ ] 3.3 `session.py` still imports no TensorFlow
-- [ ] 3.4 Type checking passes: `uv run mypy src/mlpp`
+- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest`
+- [x] 3.2 Round-trip test present and passing: `uv run pytest -k round_trip -v`
+- [x] 3.3 `session.py` still imports no TensorFlow
+- [x] 3.4 Type checking passes: `uv run mypy src/mlpp`
 
 #### Manual
 
-- [ ] 3.5 Pointing `load_session` at the old pre-change `OUTPUTS/example/` produces an error naming both the version found and the version expected
+- [x] 3.5 Pointing `load_session` at the old pre-change `OUTPUTS/example/` produces an error naming both the version found and the version expected
 
 ### Phase 4: Regenerate reference run and update docs
 

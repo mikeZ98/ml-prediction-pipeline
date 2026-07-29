@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+import textwrap
 from datetime import datetime
 from pathlib import Path
 
@@ -26,6 +29,7 @@ from mlpp.session import (
     SCHEMA_VERSION,
     FeatureContract,
     SessionWriter,
+    load_session,
     prediction_analysis_filename,
     read_fitted_state,
     read_manifest,
@@ -365,3 +369,105 @@ def test_read_fitted_state_reports_a_partial_session(
     (writer.session_dir / ENCODERS_FILE).unlink()
     with pytest.raises(ArtifactError, match=ENCODERS_FILE):
         read_fitted_state(writer.session_dir)
+
+
+# --- load_session round trip -----------------------------------------------
+
+
+def _write_session(frame: pd.DataFrame, data_cfg: DataConfig) -> tuple[SessionWriter, Preprocessor]:
+    pre = Preprocessor(data_cfg).fit(frame)
+    writer = SessionWriter(data_cfg.output_dir / "session")
+    writer.set_features(
+        FeatureContract(
+            pre.schema.numeric, pre.schema.categorical, pre.schema.output, pre.feature_names
+        )
+    )
+    write_fitted_state(writer, pre.fitted_state)
+    writer.flush()
+    return writer, pre
+
+
+def test_load_session_round_trip_is_numerically_identical(
+    frame: pd.DataFrame, data_cfg: DataConfig
+) -> None:
+    """The assertion whose absence let the committed reference run rot unnoticed."""
+    writer, pre = _write_session(frame, data_cfg)
+    loaded = load_session(writer.session_dir, data_cfg)
+
+    x_before, y_before = pre.transform(frame)
+    x_after, y_after = loaded.preprocessor.transform(frame)
+    np.testing.assert_allclose(x_after, x_before)
+    assert y_before is not None and y_after is not None
+    np.testing.assert_allclose(y_after, y_before)
+
+
+def test_load_session_restores_the_feature_contract(
+    frame: pd.DataFrame, data_cfg: DataConfig
+) -> None:
+    writer, pre = _write_session(frame, data_cfg)
+    loaded = load_session(writer.session_dir, data_cfg)
+    assert loaded.preprocessor.feature_names == pre.feature_names
+    assert loaded.preprocessor.n_features == pre.n_features
+    assert loaded.preprocessor.schema == pre.schema
+    assert loaded.session_dir == writer.session_dir
+
+
+def test_load_session_inverse_target_round_trips(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
+    writer, _ = _write_session(frame, data_cfg)
+    loaded = load_session(writer.session_dir, data_cfg)
+    _, y = loaded.preprocessor.transform(frame)
+    assert y is not None
+    np.testing.assert_allclose(
+        loaded.preprocessor.inverse_target(y), frame["target"].to_numpy(), atol=1e-6
+    )
+
+
+def test_load_session_rejects_a_listed_but_missing_file(
+    frame: pd.DataFrame, data_cfg: DataConfig
+) -> None:
+    """A manifest that lies about its contents must fail, not degrade silently."""
+    writer, _ = _write_session(frame, data_cfg)
+    (writer.session_dir / SCALER_FILE).unlink()
+    with pytest.raises(ArtifactError, match="not on disk") as exc:
+        load_session(writer.session_dir, data_cfg)
+    assert SCALER_FILE in str(exc.value)
+
+
+def test_load_session_rejects_a_pre_manifest_directory(tmp_path: Path) -> None:
+    legacy = tmp_path / "legacy"
+    legacy.mkdir()
+    (legacy / "feature_config.json").write_text('{"input_columns": []}', encoding="utf-8")
+    with pytest.raises(SchemaVersionError, match="predates the manifest contract"):
+        load_session(legacy, DataConfig(tmp_path, tmp_path, tmp_path))
+
+
+def test_load_session_does_not_import_tensorflow(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
+    """Reading a session must never require the training stack.
+
+    Asserted in a subprocess on purpose. `sys.modules` is process-global, so an
+    in-process check would pass or fail depending on whether a Keras test ran
+    first — it would measure suite ordering, not this module's imports.
+    """
+    writer, _ = _write_session(frame, data_cfg)
+    program = textwrap.dedent(f"""
+        import sys
+        from pathlib import Path
+        from mlpp.config import DataConfig
+        from mlpp.session import load_session
+
+        cfg = DataConfig(
+            train_dir=Path({str(data_cfg.train_dir)!r}),
+            test_dir=Path({str(data_cfg.test_dir)!r}),
+            output_dir=Path({str(data_cfg.output_dir)!r}),
+            input_columns={data_cfg.input_columns!r},
+            output_column={data_cfg.output_column!r},
+        )
+        loaded = load_session(Path({str(writer.session_dir)!r}), cfg)
+        assert loaded.preprocessor.n_features > 0
+        for banned in ("tensorflow", "keras"):
+            assert banned not in sys.modules, banned + " was imported"
+    """)
+    result = subprocess.run(
+        [sys.executable, "-c", program], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
