@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,18 +10,34 @@ import keras
 import numpy as np
 import pandas as pd
 
-from mlpp.artifacts import make_session_dir, save_feature_config
 from mlpp.config import PipelineConfig
 from mlpp.data import discover_csvs, read_csv_auto
 from mlpp.errors import DatasetError
 from mlpp.metrics import RegressionMetrics, regression_metrics
 from mlpp.model import build_model
 from mlpp.preprocess import Preprocessor
+from mlpp.session import (
+    BEST_MODEL_FILE,
+    METRICS_FILE,
+    ROLE_BEST_MODEL,
+    ROLE_METRICS,
+    ROLE_PREDICTION_ANALYSIS,
+    ROLE_STAGE_HISTORY,
+    ROLE_STAGE_MODEL,
+    ROLE_TRAINING_CURVES,
+    ROLE_TRAINING_LOG,
+    TRAINING_LOG_FILE,
+    FeatureContract,
+    SessionWriter,
+    prediction_analysis_filename,
+    stage_history_filename,
+    stage_model_filename,
+    training_curves_filename,
+    write_fitted_state,
+)
 from mlpp.training import active_sample_weights, set_seed, train
 
 log = logging.getLogger(__name__)
-
-METRICS_FILE = "test_metrics.csv"
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,7 +75,11 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
     if not test_files:
         log.warning("no CSV files in %s — training without evaluation", cfg.data.test_dir)
 
-    session_dir = make_session_dir(cfg.data.output_dir)
+    # The directory must exist before training, but the feature contract does not
+    # exist until the first fit and the inventory grows across stages — hence
+    # create now, set_features at fit, flush at the end.
+    writer = SessionWriter.create(cfg.data.output_dir)
+    session_dir = writer.session_dir
     log.info("session directory: %s", session_dir)
 
     pre = Preprocessor(cfg.data, use_onehot=cfg.train.use_onehot)
@@ -72,7 +91,7 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
         # Fit only on the first file; later stages must reuse that feature space.
         if not pre.is_fitted:
             pre.fit(frame)
-            save_feature_config(pre.schema, pre.feature_names, session_dir)
+            writer.set_features(_contract_from(pre))
         x_train, y_train = pre.transform(frame)
         if y_train is None:
             log.warning("skipping %s: no %r column", train_path.name, cfg.data.output_column)
@@ -95,37 +114,60 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
             sample_weight=active_sample_weights(x_train, pre, cfg.train),
             verbose=verbose,
         )
-        _save_stage_artifacts(model, pre, history.history, session_dir, stage, verbose=verbose)
-        rows.extend(_evaluate(model, pre, cfg, test_files, session_dir, stage, train_path.name))
+        # Written by the training callbacks, so record them rather than name them.
+        writer.register(ROLE_BEST_MODEL, BEST_MODEL_FILE)
+        writer.register(ROLE_TRAINING_LOG, TRAINING_LOG_FILE)
+        _save_stage_artifacts(model, pre, history.history, writer, stage, verbose=verbose)
+        rows.extend(_evaluate(model, pre, cfg, test_files, writer, stage, train_path.name))
 
     if rows:
-        pd.DataFrame([r.as_dict() for r in rows]).to_csv(session_dir / METRICS_FILE, index=False)
-        log.info("metrics written to %s", session_dir / METRICS_FILE)
+        metrics_path = writer.register(ROLE_METRICS, METRICS_FILE)
+        pd.DataFrame([r.as_dict() for r in rows]).to_csv(metrics_path, index=False)
+        log.info("metrics written to %s", metrics_path)
+
+    if writer.has_features:
+        log.info("manifest written to %s", writer.flush())
+    else:
+        log.warning("no file in %s could be fitted — no manifest written", cfg.data.train_dir)
     return PipelineResult(session_dir=session_dir, rows=tuple(rows))
+
+
+def _contract_from(pre: Preprocessor) -> FeatureContract:
+    """Project the fitted schema into the manifest's feature contract."""
+    return FeatureContract(
+        numeric_columns=pre.schema.numeric,
+        categorical_columns=pre.schema.categorical,
+        output_column=pre.schema.output,
+        feature_names=pre.feature_names,
+    )
 
 
 def _save_stage_artifacts(
     model: keras.Model,
     pre: Preprocessor,
     history: dict[str, list[float]],
-    session_dir: Path,
+    writer: SessionWriter,
     stage: int,
     *,
     verbose: int,
 ) -> None:
-    pd.DataFrame(history).to_csv(session_dir / f"history_train_{stage:02d}.csv", index=False)
-    pre.save(session_dir)
-    model.save(session_dir / f"model_iter_{stage:02d}.keras")
-    (session_dir / f"model_iter_{stage:02d}_config.json").write_text(
-        json.dumps(
-            {"n_features": pre.n_features, "feature_names": list(pre.feature_names)}, indent=2
-        ),
-        encoding="utf-8",
+    """Write one stage's artifacts, registering each with the session owner.
+
+    The old `model_iter_NN_config.json` is gone: `n_features` and `feature_names`
+    are in the manifest, and duplicating them is what let the copies drift.
+    """
+    pd.DataFrame(history).to_csv(
+        writer.register(ROLE_STAGE_HISTORY, stage_history_filename(stage)), index=False
     )
+    write_fitted_state(writer, pre.fitted_state)
+    model.save(writer.register(ROLE_STAGE_MODEL, stage_model_filename(stage)))
     if verbose:
         from mlpp.plots import plot_training_curves
 
-        plot_training_curves(history, session_dir, tag=f"train_{stage:02d}")
+        tag = f"train_{stage:02d}"
+        plot_training_curves(
+            history, writer.register(ROLE_TRAINING_CURVES, training_curves_filename(tag))
+        )
 
 
 def _evaluate(
@@ -133,7 +175,7 @@ def _evaluate(
     pre: Preprocessor,
     cfg: PipelineConfig,
     test_files: list[Path],
-    session_dir: Path,
+    writer: SessionWriter,
     stage: int,
     train_name: str,
 ) -> list[EvaluationRow]:
@@ -160,11 +202,12 @@ def _evaluate(
         if cfg.eval.write_plots:
             from mlpp.plots import plot_prediction_analysis
 
+            tag = f"tr{stage:02d}_te{index:02d}"
             plot_prediction_analysis(
                 y_true,
                 y_pred,
-                session_dir,
-                tag=f"tr{stage:02d}_te{index:02d}",
+                writer.register(ROLE_PREDICTION_ANALYSIS, prediction_analysis_filename(tag)),
+                tag=tag,
                 window=cfg.eval.rolling_window,
                 active_mask=_active_mask(x_test, pre, cfg),
             )

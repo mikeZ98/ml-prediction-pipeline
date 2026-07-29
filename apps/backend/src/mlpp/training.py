@@ -10,9 +10,7 @@ import numpy as np
 
 from mlpp.config import TrainConfig
 from mlpp.preprocess import Preprocessor
-
-BEST_MODEL_FILE = "best_model.keras"
-TRAINING_LOG_FILE = "training_log.csv"
+from mlpp.session import BEST_MODEL_FILE, TRAINING_LOG_FILE
 
 
 def set_seed(seed: int) -> None:

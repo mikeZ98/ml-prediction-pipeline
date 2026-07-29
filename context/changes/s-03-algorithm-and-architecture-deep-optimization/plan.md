@@ -437,29 +437,29 @@ rejects anything it does not recognise.
 
 #### Automated
 
-- [x] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'`
-- [x] 1.2 New module imports no TensorFlow
-- [x] 1.3 Type checking passes: `uv run mypy src/mlpp`
-- [x] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'` — 845bb60
+- [x] 1.2 New module imports no TensorFlow — 845bb60
+- [x] 1.3 Type checking passes: `uv run mypy src/mlpp` — 845bb60
+- [x] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — 845bb60
 
 #### Manual
 
-- [x] 1.5 The manifest JSON is human-readable and its field names are self-explanatory when opened in an editor
+- [x] 1.5 The manifest JSON is human-readable and its field names are self-explanatory when opened in an editor — 845bb60
 
 ### Phase 2: Route all writers through the owner
 
 #### Automated
 
-- [ ] 2.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [ ] 2.2 No filename literals remain outside the owner
-- [ ] 2.3 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 2.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 2.5 A real run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet`
+- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest`
+- [x] 2.2 No filename literals remain outside the owner
+- [x] 2.3 Type checking passes: `uv run mypy src/mlpp`
+- [x] 2.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 2.5 A real run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet`
 
 #### Manual
 
-- [ ] 2.6 A freshly produced session directory contains `manifest.json` and no `feature_config.json` or `model_iter_NN_config.json`
-- [ ] 2.7 Opening the manifest shows the feature contract exactly once, with no duplicated fields
+- [x] 2.6 A freshly produced session directory contains `manifest.json` and no `feature_config.json` or `model_iter_NN_config.json`
+- [x] 2.7 Opening the manifest shows the feature contract exactly once, with no duplicated fields
 
 ### Phase 3: Load-and-verify path
 

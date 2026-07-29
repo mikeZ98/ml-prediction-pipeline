@@ -9,20 +9,13 @@ once during `fit`, stored on the Preprocessor, and reused by every `transform`.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
 
-import joblib
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from mlpp.config import DataConfig
-from mlpp.errors import ArtifactError, NotFittedError, SchemaError
-
-SCALER_FILE = "scaler.gz"
-OUTPUT_SCALER_FILE = "output_scaler.gz"
-ENCODERS_FILE = "encoders.gz"
+from mlpp.errors import NotFittedError, SchemaError
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +29,21 @@ class FeatureSchema:
     @property
     def inputs(self) -> tuple[str, ...]:
         return self.numeric + self.categorical
+
+
+@dataclass(frozen=True, slots=True)
+class FittedState:
+    """The fitted estimators, separated from wherever they get stored.
+
+    Persistence is `session.py`'s job; this is the narrow surface it needs. Note
+    what is *absent*: the schema and feature names are not here, because the
+    manifest is their single home. Bundling them alongside the encoder is what
+    produced three drifting copies of the same facts.
+    """
+
+    scaler: StandardScaler
+    output_scaler: StandardScaler
+    onehot: OneHotEncoder
 
 
 def resolve_schema(df: pd.DataFrame, cfg: DataConfig) -> FeatureSchema:
@@ -200,34 +208,38 @@ class Preprocessor:
             names += [str(n) for n in self._onehot.get_feature_names_out(schema.categorical)]
         return tuple(names)
 
-    def save(self, out_dir: Path) -> None:
-        """Persist scalers and encoders next to the model artifacts."""
+    @property
+    def fitted_state(self) -> FittedState:
+        """The estimators worth persisting. Raises if `fit` has not run."""
         if self._schema is None:
-            raise NotFittedError("refusing to save an unfitted Preprocessor")
-        out_dir.mkdir(parents=True, exist_ok=True)
-        joblib.dump(self._scaler, out_dir / SCALER_FILE)
-        joblib.dump(self._output_scaler, out_dir / OUTPUT_SCALER_FILE)
-        joblib.dump(
-            {"onehot": self._onehot, "schema": self._schema, "feature_names": self._feature_names},
-            out_dir / ENCODERS_FILE,
+            raise NotFittedError("refusing to export state from an unfitted Preprocessor")
+        return FittedState(
+            scaler=self._scaler,
+            output_scaler=self._output_scaler,
+            onehot=self._onehot,
         )
 
     @classmethod
-    def load(cls, out_dir: Path, cfg: DataConfig, *, use_onehot: bool = True) -> Preprocessor:
-        """Restore a Preprocessor previously written by `save`."""
+    def restore(
+        cls,
+        cfg: DataConfig,
+        state: FittedState,
+        schema: FeatureSchema,
+        feature_names: tuple[str, ...],
+        *,
+        use_onehot: bool = True,
+    ) -> Preprocessor:
+        """Rebuild a fitted Preprocessor from persisted estimators plus manifest facts.
+
+        The schema and feature names come from the manifest rather than from the
+        pickled bundle, so there is exactly one authority for the column contract.
+        """
         pre = cls(cfg, use_onehot=use_onehot)
-        for name in (SCALER_FILE, OUTPUT_SCALER_FILE, ENCODERS_FILE):
-            if not (out_dir / name).is_file():
-                raise ArtifactError(f"missing artifact {name} in {out_dir}")
-        pre._scaler = joblib.load(out_dir / SCALER_FILE)
-        pre._output_scaler = joblib.load(out_dir / OUTPUT_SCALER_FILE)
-        bundle: dict[str, Any] = joblib.load(out_dir / ENCODERS_FILE)
-        try:
-            pre._onehot = bundle["onehot"]
-            pre._schema = bundle["schema"]
-            pre._feature_names = tuple(bundle["feature_names"])
-        except KeyError as exc:
-            raise ArtifactError(f"{ENCODERS_FILE} is missing key {exc}") from exc
+        pre._scaler = state.scaler
+        pre._output_scaler = state.output_scaler
+        pre._onehot = state.onehot
+        pre._schema = schema
+        pre._feature_names = tuple(feature_names)
         return pre
 
 

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from mlpp.config import DataConfig
-from mlpp.errors import ArtifactError, NotFittedError, SchemaError
+from mlpp.errors import NotFittedError, SchemaError
 from mlpp.preprocess import Preprocessor, align_columns, resolve_schema
 
 
@@ -133,19 +132,27 @@ def test_fit_requires_target_column(frame: pd.DataFrame, data_cfg: DataConfig) -
         Preprocessor(data_cfg).fit(frame.drop(columns=["target"]))
 
 
-def test_save_load_round_trip(frame: pd.DataFrame, data_cfg: DataConfig, tmp_path: Path) -> None:
+def test_fitted_state_exposes_the_estimators(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
+    state = Preprocessor(data_cfg).fit(frame).fitted_state
+    assert state.scaler is not None
+    assert state.output_scaler is not None
+    assert state.onehot is not None
+
+
+def test_fitted_state_carries_no_schema(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
+    """The schema belongs to the manifest; duplicating it here is what caused drift."""
+    state = Preprocessor(data_cfg).fit(frame).fitted_state
+    assert not hasattr(state, "schema")
+    assert not hasattr(state, "feature_names")
+
+
+def test_fitted_state_before_fit_raises(data_cfg: DataConfig) -> None:
+    with pytest.raises(NotFittedError):
+        _ = Preprocessor(data_cfg).fitted_state
+
+
+def test_restore_reproduces_transforms(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
     pre = Preprocessor(data_cfg).fit(frame)
-    pre.save(tmp_path)
-    restored = Preprocessor.load(tmp_path, data_cfg)
+    restored = Preprocessor.restore(data_cfg, pre.fitted_state, pre.schema, pre.feature_names)
     assert restored.feature_names == pre.feature_names
     np.testing.assert_allclose(restored.transform(frame)[0], pre.transform(frame)[0])
-
-
-def test_save_unfitted_raises(data_cfg: DataConfig, tmp_path: Path) -> None:
-    with pytest.raises(NotFittedError):
-        Preprocessor(data_cfg).save(tmp_path)
-
-
-def test_load_reports_missing_artifact(data_cfg: DataConfig, tmp_path: Path) -> None:
-    with pytest.raises(ArtifactError, match="missing artifact"):
-        Preprocessor.load(tmp_path, data_cfg)
