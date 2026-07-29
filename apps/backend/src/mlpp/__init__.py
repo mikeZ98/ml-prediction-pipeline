@@ -11,6 +11,7 @@ from mlpp.errors import (
     MlppError,
     NotFittedError,
     SchemaError,
+    SchemaVersionError,
 )
 
 __version__ = "0.1.0"
@@ -21,5 +22,6 @@ __all__ = [
     "MlppError",
     "NotFittedError",
     "SchemaError",
+    "SchemaVersionError",
     "__version__",
 ]
