@@ -1,0 +1,41 @@
+# secrets / env
+.env
+.env.*
+!.env.template
+
+# deps / runtimes
+node_modules/
+.venv/
+.direnv/
+
+# caches (SSD-local isolation — see .envrc)
+.uv_cache/
+.uv_python/
+.npm_cache/
+.pnpm_home/
+.bun/
+.cache/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# build outputs
+dist/
+build/
+.next/
+out/
+bin/
+*.egg-info/
+*.py[co]
+__pycache__/
+
+# training artifacts; OUTPUTS/example/ is committed as a reference run
+OUTPUTS/*
+!OUTPUTS/example/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

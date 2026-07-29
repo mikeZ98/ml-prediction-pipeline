@@ -1,12 +1,12 @@
-# ML Prediction Pipeline — Time‑Series Regression (CNN + GRU)
+# ML Prediction Pipeline — Time-Series Regression (CNN + Bi-GRU)
 
-Professional, end‑to‑end pipeline for **time‑series / tabular regression**:
-- **Model**: CNN → GRU → Dense (Keras/TensorFlow)
-- **Data processing**: `StandardScaler` for inputs/target, optional **One‑Hot** for categoricals
-- **Training artifacts**: model (`.keras`), scalers/encoders (`.gz`), `feature_config.json`
-- **Evaluation**: MAE/RMSE/R², learning curves, interactive HTML plots
-- **UX**: clean notebooks, repo structure ready for CI/packaging
+End-to-end pipeline for **time-series / tabular regression**:
 
+- **Model**: Conv1D → Bidirectional GRU → Dense (Keras 3 / TensorFlow)
+- **Preprocessing**: `StandardScaler` for inputs and target, optional one-hot for categoricals
+- **Artifacts**: model (`.keras`), scalers/encoders (`.gz`), `feature_config.json`
+- **Evaluation**: MSE/RMSE/MAE/R², learning curves, interactive HTML diff plots
+- **Interfaces**: a `mlpp-train` CLI *and* a thin notebook driver over the same tested package
 
 ---
 
@@ -14,104 +14,128 @@ Professional, end‑to‑end pipeline for **time‑series / tabular regression**
 
 ```
 .
-├─ notebooks/
-│  └─ 01_train.ipynb           # Training notebook (end‑to‑end)
-├─ src/mlpp/                    # (slot for shared code if needed later)
-├─ TRAIN/                       # Put your training CSVs here (examples included)
-├─ TEST/                        # Put your test CSVs here (examples included)
-├─ OUTPUTS/                     # Training artifacts & plots (git‑ignored)
+├─ apps/backend/                 # the `mlpp` uv project — all pipeline logic
+│  ├─ src/mlpp/                  #   config · data · preprocess · metrics · artifacts
+│  │                             #   model · training · plots · pipeline · cli
+│  ├─ tests/                     #   one test module per source module
+│  ├─ pyproject.toml             #   deps, pytest/ruff/mypy config
+│  └─ uv.lock                    #   pinned, committed
+├─ notebooks/01_train.ipynb      # thin driver over `mlpp` (generated — see below)
+├─ TRAIN/                        # training CSVs (samples included)
+├─ TEST/                         # test CSVs (samples included)
+├─ OUTPUTS/                      # run artifacts, git-ignored except example/
+│  └─ example/                   # a committed reference run
 ├─ scripts/
-│  └─ quickstart.sh             # (optional) one‑command setup & run
-├─ requirements.txt
-├─ .gitignore
+│  ├─ quickstart.sh              # sync + train in one command
+│  └─ build_notebook.py          # regenerates notebooks/01_train.ipynb
+├─ CLAUDE.md · .cursorrules      # agent context
 ├─ LICENSE
 └─ README.md
 ```
-
-> If you keep a separate prediction workflow (GUI/CLI), add `notebooks/02_predict.ipynb` or `scripts/predict.py` and place shared helpers in `src/mlpp/`.
-
----
-
-## 🧠 Task & data schema
-
-**Task:** univariate regression on time‑ordered data (predict a continuous `target`).
-
-**Default input columns:**
-```
-feature_01 .. feature_12, comp_active
-```
-**Target column:**
-```
-target
-```
-You can change column names inside the notebook (section **Konfiguracja**).
-
-> CSV delimiter is auto‑detected; a robust fallback to `;` and to default `,` is included.
 
 ---
 
 ## 🚀 Quickstart
 
-### 1) Environment
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/). **No pip, venv or conda.**
+
 ```bash
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install --upgrade pip
-pip install -r requirements.txt
+./scripts/quickstart.sh              # sync dependencies, then train
+./scripts/quickstart.sh --epochs 20  # extra flags pass through to mlpp-train
 ```
 
-### 2) Data
-- Put your CSVs into **TRAIN/** and **TEST/**.  
-- See examples in `TRAIN/example_train.csv` and `TEST/example_test.csv` for the expected headers.
+Or step by step, from `apps/backend/`:
 
-### 3) Run
-Open the notebook and run all cells:
 ```bash
-jupyter lab   # or: jupyter notebook / VS Code
+uv sync --all-groups
+uv run mlpp-train --epochs 5
+uv run mlpp-train --help     # every knob: columns, loss, seed, batch size, plots…
 ```
-Artifacts (models, scalers, encoders, plots) land under **OUTPUTS/** in a timestamped subfolder.
+
+Artifacts land in a timestamped folder under `OUTPUTS/`.
+
+### Notebook
+
+```bash
+cd apps/backend && uv run python -m ipykernel install --user --name mlpp
+```
+
+Open `notebooks/01_train.ipynb` and pick the `mlpp` kernel. The notebook only builds a config and
+calls `run_pipeline` — the logic lives in the package, so it stays testable. It is generated:
+
+```bash
+uv run --project apps/backend python scripts/build_notebook.py
+```
+
+---
+
+## 🧠 Task & data schema
+
+Regression on time-ordered rows: predict a continuous `target`.
+
+Default input columns — override with `--input-columns`:
+
+```
+feature_01 .. feature_12, comp_active
+```
+
+CSV delimiters are sniffed, with `;` and `,` fallbacks. Under the default `strict_schema`, a
+missing input column fails fast; `--lenient-schema` fills it with `0.0` instead.
 
 ---
 
 ## 📊 Outputs
-- `OUTPUTS/<timestamp>/best_model.keras` — best checkpoint by `val_loss`
-- `OUTPUTS/<timestamp>/scaler.gz`, `output_scaler.gz`, `encoders.gz` — preprocessing
-- `OUTPUTS/<timestamp>/feature_config.json` — persisted input/output columns
-- `OUTPUTS/<timestamp>/*.png` — loss/MAE curves
-- `OUTPUTS/<timestamp>/*.html` — interactive prediction diff plots
-- `OUTPUTS/<timestamp>/test_metrics.csv` — per‑file MSE/RMSE/MAE/R²
+
+Per session directory `OUTPUTS/<timestamp>/`:
+
+| File | Contents |
+| --- | --- |
+| `best_model.keras` | best checkpoint by `val_loss` |
+| `model_iter_NN.keras` | snapshot after each training stage |
+| `scaler.gz`, `output_scaler.gz`, `encoders.gz` | fitted preprocessing state |
+| `feature_config.json` | the exact column contract the model expects |
+| `history_train_NN.csv`, `training_log.csv` | per-epoch metrics |
+| `training_curves_train_NN.png` | loss / MAE curves |
+| `prediction_analysis_trNN_teNN.html` | interactive truth-vs-prediction + residuals |
+| `test_metrics.csv` | MSE/RMSE/MAE/R² per (train stage, test file) pair |
 
 ---
 
-## 🛠️ Tech stack
-- TensorFlow / Keras (2.x), NumPy, Pandas
-- scikit‑learn (StandardScaler, OneHotEncoder)
-- Matplotlib & Plotly (interactive HTML)
-- Joblib for artifact persistence
-- Jupyter environment
+## 🧪 Development
+
+From `apps/backend/`:
+
+```bash
+uv run pytest -m 'not slow'   # ~1s — TF-free modules only
+uv run pytest                 # full suite, incl. Keras smoke tests
+uv run ruff check . && uv run ruff format --check .
+uv run mypy src/mlpp          # strict
+```
+
+`config`, `data`, `preprocess`, `metrics` and `artifacts` deliberately import no TensorFlow, which
+is what keeps the fast suite fast.
 
 ---
 
-## 🔄 Reproducibility & quality
-- Deterministic seeds for NumPy/TensorFlow
-- EarlyStopping + ReduceLROnPlateau + ModelCheckpoint
-- Schema validation (`STRICT_SCHEMA`) with a tolerant fallback
-- Robust CSV delimiter detection
+## 🔄 Reproducibility & correctness
+
+- Seeded Python/NumPy/Keras RNGs (`--seed`), verified reproducible by test.
+- EarlyStopping + ReduceLROnPlateau + ModelCheckpoint + CSVLogger.
+- **Preprocessing is fitted once**, on the first training file; test data is only ever
+  transformed, so evaluation cannot leak.
+- Feature order is frozen at fit time and persisted, so a dtype change in a later CSV can never
+  silently reorder the model's inputs.
 
 ---
 
-## 🗺️ Roadmap (suggested)
-- [ ] Notebook `02_predict.ipynb` for inference from saved artifacts
-- [ ] `scripts/predict.py` (CLI): `--artifacts`, `--csv`, `--out`
-- [ ] `src/mlpp/` helpers for shared preprocessing & plotting
-- [ ] GitHub Actions: smoke‑test `pip install` + notebook import
+## 🗺️ Roadmap
+
+- [ ] `mlpp-predict` CLI: load a session directory, score a new CSV
+- [ ] GitHub Actions: `ruff` + `mypy` + `pytest -m 'not slow'` on push
 - [ ] MLflow experiment tracking (optional)
 
 ---
 
 ## 📄 License
-Released under the **MIT License** (see [LICENSE](LICENSE)).
 
----
-
-## 🤝 Acknowledgements
-Built as a clean, portfolio‑friendly baseline for regression on time‑ordered industrial data.
+MIT — see [LICENSE](LICENSE).
