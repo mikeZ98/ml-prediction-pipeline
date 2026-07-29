@@ -19,3 +19,12 @@ class NotFittedError(MlppError):
 
 class ArtifactError(MlppError):
     """A persisted artifact is missing or structurally invalid."""
+
+
+class SchemaVersionError(ArtifactError):
+    """A session was written by a different version of the artifact contract.
+
+    Distinct from a corrupt artifact: the file is well-formed, this build just
+    cannot honestly interpret it. Artifacts are cheap to regenerate, so the
+    contract rejects rather than coerces.
+    """

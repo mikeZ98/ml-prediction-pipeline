@@ -437,14 +437,14 @@ rejects anything it does not recognise.
 
 #### Automated
 
-- [ ] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'`
-- [ ] 1.2 New module imports no TensorFlow
-- [ ] 1.3 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'`
+- [x] 1.2 New module imports no TensorFlow
+- [x] 1.3 Type checking passes: `uv run mypy src/mlpp`
+- [x] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
 
 #### Manual
 
-- [ ] 1.5 The manifest JSON is human-readable and its field names are self-explanatory when opened in an editor
+- [x] 1.5 The manifest JSON is human-readable and its field names are self-explanatory when opened in an editor
 
 ### Phase 2: Route all writers through the owner
 
