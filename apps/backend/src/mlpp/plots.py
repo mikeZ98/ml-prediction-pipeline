@@ -16,9 +16,13 @@ from plotly.subplots import make_subplots  # noqa: E402
 from mlpp.metrics import rolling_error  # noqa: E402
 
 
-def plot_training_curves(history: Mapping[str, Sequence[float]], out_dir: Path, tag: str) -> Path:
-    """Write loss and MAE curves for one training stage."""
-    out_dir.mkdir(parents=True, exist_ok=True)
+def plot_training_curves(history: Mapping[str, Sequence[float]], path: Path) -> Path:
+    """Write loss and MAE curves for one training stage to `path`.
+
+    Takes a full path rather than a directory + tag: naming files in a session
+    directory is `session.py`'s job, not this module's.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
     fig, (ax_loss, ax_mae) = plt.subplots(1, 2, figsize=(12, 5))
     for ax, key, title in ((ax_loss, "loss", "Loss"), (ax_mae, "mae", "MAE")):
         for prefix, label in (("", "train"), ("val_", "val")):
@@ -29,7 +33,6 @@ def plot_training_curves(history: Mapping[str, Sequence[float]], out_dir: Path, 
         ax.set_xlabel("epoch")
         ax.legend()
     fig.tight_layout()
-    path = out_dir / f"training_curves_{tag}.png"
     fig.savefig(path, dpi=150)
     plt.close(fig)
     return path
@@ -38,13 +41,16 @@ def plot_training_curves(history: Mapping[str, Sequence[float]], out_dir: Path, 
 def plot_prediction_analysis(
     y_true: np.ndarray,
     y_pred: np.ndarray,
-    out_dir: Path,
+    path: Path,
     tag: str,
     window: int,
     active_mask: np.ndarray | None = None,
 ) -> Path:
-    """Write the interactive truth-vs-prediction / residual HTML report."""
-    out_dir.mkdir(parents=True, exist_ok=True)
+    """Write the interactive truth-vs-prediction / residual report to `path`.
+
+    `tag` survives only as the chart title; the filename comes from the caller.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
     true = np.asarray(y_true).ravel()
     pred = np.asarray(y_pred).ravel()
     diffs = pred - true
@@ -58,6 +64,5 @@ def plot_prediction_analysis(
     fig.add_trace(go.Scatter(y=roll, mode="lines", name=roll_label), row=2, col=1)
     fig.update_layout(height=800, title_text=f"Prediction analysis — {tag}", showlegend=True)
 
-    path = out_dir / f"prediction_analysis_{tag}.html"
     fig.write_html(str(path))
     return path

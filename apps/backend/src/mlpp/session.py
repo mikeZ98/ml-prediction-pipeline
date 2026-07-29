@@ -18,7 +18,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Final
 
+import joblib
+
 from mlpp.errors import ArtifactError, SchemaVersionError
+from mlpp.preprocess import FittedState
 
 #: Bumped whenever the manifest layout changes incompatibly. The loader rejects
 #: anything it does not recognise rather than guessing.
@@ -220,6 +223,35 @@ class SessionWriter:
         path = self._dir / MANIFEST_FILE
         path.write_text(json.dumps(manifest.as_dict(), indent=2) + "\n", encoding="utf-8")
         return path
+
+
+def write_fitted_state(writer: SessionWriter, state: FittedState) -> None:
+    """Persist the fitted estimators and record them in the inventory.
+
+    Only the estimators are pickled. The schema and feature names go in the
+    manifest — keeping them out of `encoders.gz` is what stops the contract from
+    having two homes that can disagree.
+    """
+    joblib.dump(state.scaler, writer.register(ROLE_SCALER, SCALER_FILE))
+    joblib.dump(state.output_scaler, writer.register(ROLE_OUTPUT_SCALER, OUTPUT_SCALER_FILE))
+    joblib.dump(state.onehot, writer.register(ROLE_ENCODERS, ENCODERS_FILE))
+
+
+def read_fitted_state(session_dir: Path) -> FittedState:
+    """Load the fitted estimators, failing clearly when any file is absent."""
+    paths = {
+        SCALER_FILE: session_dir / SCALER_FILE,
+        OUTPUT_SCALER_FILE: session_dir / OUTPUT_SCALER_FILE,
+        ENCODERS_FILE: session_dir / ENCODERS_FILE,
+    }
+    missing = [name for name, path in paths.items() if not path.is_file()]
+    if missing:
+        raise ArtifactError(f"missing fitted-state artifacts in {session_dir}: {sorted(missing)}")
+    return FittedState(
+        scaler=joblib.load(paths[SCALER_FILE]),
+        output_scaler=joblib.load(paths[OUTPUT_SCALER_FILE]),
+        onehot=joblib.load(paths[ENCODERS_FILE]),
+    )
 
 
 def read_manifest(session_dir: Path) -> SessionManifest:

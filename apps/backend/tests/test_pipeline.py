@@ -8,26 +8,65 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from mlpp.artifacts import FEATURE_CONFIG_FILE
 from mlpp.config import PipelineConfig
 from mlpp.errors import DatasetError
+from mlpp.session import (
+    MANIFEST_FILE,
+    METRICS_FILE,
+    ROLE_METRICS,
+    ROLE_STAGE_MODEL,
+    SCALER_FILE,
+    read_manifest,
+    stage_model_filename,
+)
 
 pytestmark = pytest.mark.slow
 
 
 def test_pipeline_produces_metrics_and_artifacts(pipeline_cfg: PipelineConfig) -> None:
-    from mlpp.pipeline import METRICS_FILE, run_pipeline
+    from mlpp.pipeline import run_pipeline
 
     result = run_pipeline(pipeline_cfg, verbose=0)
     session = result.session_dir
 
     assert len(result.rows) == 1
     assert result.rows[0].test_file == "test_A.csv"
-    for name in (FEATURE_CONFIG_FILE, METRICS_FILE, "model_iter_01.keras", "scaler.gz"):
+    for name in (MANIFEST_FILE, METRICS_FILE, stage_model_filename(1), SCALER_FILE):
         assert (session / name).is_file(), f"missing artifact {name}"
 
     metrics = pd.read_csv(session / METRICS_FILE)
     assert list(metrics.columns) == ["train_file", "test_file", "mse", "rmse", "mae", "r2"]
+
+
+def test_pipeline_drops_the_superseded_side_cars(pipeline_cfg: PipelineConfig) -> None:
+    """feature_config.json and model_iter_NN_config.json are now manifest fields."""
+    from mlpp.pipeline import run_pipeline
+
+    session = run_pipeline(pipeline_cfg, verbose=0).session_dir
+    assert not (session / "feature_config.json").exists()
+    assert not (session / "model_iter_01_config.json").exists()
+
+
+def test_manifest_inventory_matches_files_on_disk(pipeline_cfg: PipelineConfig) -> None:
+    """Every file the manifest claims must actually exist — the check that was missing."""
+    from mlpp.pipeline import run_pipeline
+
+    session = run_pipeline(pipeline_cfg, verbose=0).session_dir
+    manifest = read_manifest(session)
+    assert manifest.artifacts, "inventory should not be empty"
+    for entry in manifest.artifacts:
+        assert (session / entry.filename).is_file(), f"{entry.filename} listed but absent"
+    assert manifest.filenames_for(ROLE_METRICS) == (METRICS_FILE,)
+    assert manifest.filenames_for(ROLE_STAGE_MODEL) == (stage_model_filename(1),)
+
+
+def test_manifest_records_the_feature_contract_once(pipeline_cfg: PipelineConfig) -> None:
+    from mlpp.pipeline import run_pipeline
+
+    result = run_pipeline(pipeline_cfg, verbose=0)
+    features = read_manifest(result.session_dir).features
+    assert features.output_column == pipeline_cfg.data.output_column
+    assert features.feature_names, "feature names must be recorded"
 
 
 def test_pipeline_evaluates_every_train_test_pair(
