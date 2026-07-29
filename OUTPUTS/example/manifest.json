@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "created": "2026-07-29T13:30:35",
+  "features": {
+    "numeric_columns": [
+      "feature_01",
+      "feature_02",
+      "feature_03",
+      "feature_04",
+      "feature_05",
+      "feature_06",
+      "feature_07",
+      "feature_08",
+      "feature_09",
+      "feature_10",
+      "feature_11",
+      "feature_12",
+      "comp_active"
+    ],
+    "categorical_columns": [],
+    "output_column": "target",
+    "feature_names": [
+      "feature_01",
+      "feature_02",
+      "feature_03",
+      "feature_04",
+      "feature_05",
+      "feature_06",
+      "feature_07",
+      "feature_08",
+      "feature_09",
+      "feature_10",
+      "feature_11",
+      "feature_12",
+      "comp_active"
+    ]
+  },
+  "artifacts": [
+    {
+      "role": "best_model",
+      "filename": "best_model.keras"
+    },
+    {
+      "role": "training_log",
+      "filename": "training_log.csv"
+    },
+    {
+      "role": "stage_history",
+      "filename": "history_train_01.csv"
+    },
+    {
+      "role": "scaler",
+      "filename": "scaler.gz"
+    },
+    {
+      "role": "output_scaler",
+      "filename": "output_scaler.gz"
+    },
+    {
+      "role": "encoders",
+      "filename": "encoders.gz"
+    },
+    {
+      "role": "stage_model",
+      "filename": "model_iter_01.keras"
+    },
+    {
+      "role": "training_curves",
+      "filename": "training_curves_train_01.png"
+    },
+    {
+      "role": "prediction_analysis",
+      "filename": "prediction_analysis_tr01_te01.html"
+    },
+    {
+      "role": "prediction_analysis",
+      "filename": "prediction_analysis_tr01_te02.html"
+    },
+    {
+      "role": "stage_history",
+      "filename": "history_train_02.csv"
+    },
+    {
+      "role": "stage_model",
+      "filename": "model_iter_02.keras"
+    },
+    {
+      "role": "training_curves",
+      "filename": "training_curves_train_02.png"
+    },
+    {
+      "role": "prediction_analysis",
+      "filename": "prediction_analysis_tr02_te01.html"
+    },
+    {
+      "role": "prediction_analysis",
+      "filename": "prediction_analysis_tr02_te02.html"
+    },
+    {
+      "role": "metrics",
+      "filename": "test_metrics.csv"
+    }
+  ]
+}

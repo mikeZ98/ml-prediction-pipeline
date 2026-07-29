@@ -4,7 +4,7 @@ End-to-end pipeline for **time-series / tabular regression**:
 
 - **Model**: Conv1D → Bidirectional GRU → Dense (Keras 3 / TensorFlow)
 - **Preprocessing**: `StandardScaler` for inputs and target, optional one-hot for categoricals
-- **Artifacts**: model (`.keras`), scalers/encoders (`.gz`), `feature_config.json`
+- **Artifacts**: model (`.keras`), scalers/encoders (`.gz`), and a versioned `manifest.json`
 - **Evaluation**: MSE/RMSE/MAE/R², learning curves, interactive HTML diff plots
 - **Interfaces**: a `mlpp-train` CLI *and* a thin notebook driver over the same tested package
 
@@ -15,7 +15,7 @@ End-to-end pipeline for **time-series / tabular regression**:
 ```
 .
 ├─ apps/backend/                 # the `mlpp` uv project — all pipeline logic
-│  ├─ src/mlpp/                  #   config · data · preprocess · metrics · artifacts
+│  ├─ src/mlpp/                  #   config · data · preprocess · metrics · session
 │  │                             #   model · training · plots · pipeline · cli
 │  ├─ tests/                     #   one test module per source module
 │  ├─ pyproject.toml             #   deps, pytest/ruff/mypy config
@@ -90,14 +90,20 @@ Per session directory `OUTPUTS/<timestamp>/`:
 
 | File | Contents |
 | --- | --- |
+| `manifest.json` | schema version, the column contract, and an inventory of every file below |
 | `best_model.keras` | best checkpoint by `val_loss` |
 | `model_iter_NN.keras` | snapshot after each training stage |
-| `scaler.gz`, `output_scaler.gz`, `encoders.gz` | fitted preprocessing state |
-| `feature_config.json` | the exact column contract the model expects |
+| `scaler.gz`, `output_scaler.gz`, `encoders.gz` | fitted preprocessing estimators |
 | `history_train_NN.csv`, `training_log.csv` | per-epoch metrics |
 | `training_curves_train_NN.png` | loss / MAE curves |
 | `prediction_analysis_trNN_teNN.html` | interactive truth-vs-prediction + residuals |
 | `test_metrics.csv` | MSE/RMSE/MAE/R² per (train stage, test file) pair |
+
+`manifest.json` is the single source of truth for the column contract, and
+`mlpp.session.load_session()` reads it back. It carries a `schema_version`:
+sessions written under a different version are **rejected, not migrated** —
+regenerate them with `mlpp-train`. Artifacts take seconds to rebuild, so a
+permanent compatibility shim would cost more than it saves.
 
 ---
 
@@ -112,8 +118,8 @@ uv run ruff check . && uv run ruff format --check .
 uv run mypy src/mlpp          # strict
 ```
 
-`config`, `data`, `preprocess`, `metrics` and `artifacts` deliberately import no TensorFlow, which
-is what keeps the fast suite fast.
+`config`, `data`, `preprocess`, `metrics` and `session` deliberately import no TensorFlow, which
+is what keeps the fast suite fast — and is why reading a saved session never needs the training stack.
 
 ---
 

@@ -465,26 +465,26 @@ rejects anything it does not recognise.
 
 #### Automated
 
-- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 3.2 Round-trip test present and passing: `uv run pytest -k round_trip -v`
-- [x] 3.3 `session.py` still imports no TensorFlow
-- [x] 3.4 Type checking passes: `uv run mypy src/mlpp`
+- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest` — 61b1fe6
+- [x] 3.2 Round-trip test present and passing: `uv run pytest -k round_trip -v` — 61b1fe6
+- [x] 3.3 `session.py` still imports no TensorFlow — 61b1fe6
+- [x] 3.4 Type checking passes: `uv run mypy src/mlpp` — 61b1fe6
 
 #### Manual
 
-- [x] 3.5 Pointing `load_session` at the old pre-change `OUTPUTS/example/` produces an error naming both the version found and the version expected
+- [x] 3.5 Pointing `load_session` at the old pre-change `OUTPUTS/example/` produces an error naming both the version found and the version expected — 61b1fe6
 
 ### Phase 4: Regenerate reference run and update docs
 
 #### Automated
 
-- [ ] 4.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [ ] 4.2 Regenerated example loads via `load_session`
-- [ ] 4.3 Example contains a manifest: `test -f OUTPUTS/example/manifest.json`
-- [ ] 4.4 No stale side-cars remain in `OUTPUTS/example/`
+- [x] 4.1 Full suite passes: `cd apps/backend && uv run pytest`
+- [x] 4.2 Regenerated example loads via `load_session`
+- [x] 4.3 Example contains a manifest: `test -f OUTPUTS/example/manifest.json`
+- [x] 4.4 No stale side-cars remain in `OUTPUTS/example/`
 - [ ] 4.5 CI passes on the branch (both Python versions plus notebook-drift)
 
 #### Manual
 
-- [ ] 4.6 README's artifact table matches the actual contents of the regenerated `OUTPUTS/example/`, file for file
-- [ ] 4.7 CLAUDE.md's new invariant reads clearly enough that an agent would not add a second writer
+- [x] 4.6 README's artifact table matches the actual contents of the regenerated `OUTPUTS/example/`, file for file
+- [x] 4.7 CLAUDE.md's new invariant reads clearly enough that an agent would not add a second writer
