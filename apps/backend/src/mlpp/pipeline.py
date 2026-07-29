@@ -117,7 +117,9 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
         # Written by the training callbacks, so record them rather than name them.
         writer.register(ROLE_BEST_MODEL, BEST_MODEL_FILE)
         writer.register(ROLE_TRAINING_LOG, TRAINING_LOG_FILE)
-        _save_stage_artifacts(model, pre, history.history, writer, stage, verbose=verbose)
+        _save_stage_artifacts(
+            model, pre, history.history, writer, stage, write_plots=cfg.eval.write_plots
+        )
         rows.extend(_evaluate(model, pre, cfg, test_files, writer, stage, train_path.name))
 
     if rows:
@@ -149,19 +151,23 @@ def _save_stage_artifacts(
     writer: SessionWriter,
     stage: int,
     *,
-    verbose: int,
+    write_plots: bool,
 ) -> None:
     """Write one stage's artifacts, registering each with the session owner.
 
     The old `model_iter_NN_config.json` is gone: `n_features` and `feature_names`
     are in the manifest, and duplicating them is what let the copies drift.
+
+    Plot writing follows `eval.write_plots`, not `verbose`. Those were crossed:
+    `--quiet` silently dropped the training curves while `--no-plots` left them
+    on, so console noise and artifact production were the same switch.
     """
     pd.DataFrame(history).to_csv(
         writer.register(ROLE_STAGE_HISTORY, stage_history_filename(stage)), index=False
     )
     write_fitted_state(writer, pre.fitted_state)
     model.save(writer.register(ROLE_STAGE_MODEL, stage_model_filename(stage)))
-    if verbose:
+    if write_plots:
         from mlpp.plots import plot_training_curves
 
         tag = f"train_{stage:02d}"

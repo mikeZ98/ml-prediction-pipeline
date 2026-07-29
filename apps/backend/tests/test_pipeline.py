@@ -120,6 +120,30 @@ def test_pipeline_writes_plots_when_enabled(pipeline_cfg: PipelineConfig) -> Non
     assert (session / "prediction_analysis_tr01_te01.html").is_file()
 
 
+def test_plots_follow_write_plots_not_verbose(pipeline_cfg: PipelineConfig) -> None:
+    """These were crossed: --quiet silently dropped the training curves.
+
+    verbose controls console noise; write_plots controls artifacts. A quiet run
+    must still produce every plot.
+    """
+    from mlpp.pipeline import run_pipeline
+
+    cfg = replace(pipeline_cfg, eval=replace(pipeline_cfg.eval, write_plots=True))
+    session = run_pipeline(cfg, verbose=0).session_dir
+    assert (session / "training_curves_train_01.png").is_file()
+    assert (session / "prediction_analysis_tr01_te01.html").is_file()
+
+
+def test_no_plots_suppresses_both_kinds(pipeline_cfg: PipelineConfig) -> None:
+    """The converse: write_plots=False must stop curves too, even when verbose."""
+    from mlpp.pipeline import run_pipeline
+
+    cfg = replace(pipeline_cfg, eval=replace(pipeline_cfg.eval, write_plots=False))
+    session = run_pipeline(cfg, verbose=1).session_dir
+    assert not list(session.glob("training_curves_*.png"))
+    assert not list(session.glob("prediction_analysis_*.html"))
+
+
 def test_pipeline_requires_training_data(pipeline_cfg: PipelineConfig) -> None:
     """The notebook raised NameError here (`print(f(...))`); it must be a clear error."""
     from mlpp.pipeline import run_pipeline
