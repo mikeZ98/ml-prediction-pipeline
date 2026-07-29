@@ -15,9 +15,9 @@ uv run pytest -q                # full suite
 | --- | --- | --- |
 | `config.py` | Immutable `DataConfig` / `TrainConfig` / `EvalConfig` | no |
 | `data.py` | CSV discovery + delimiter-sniffing loader | no |
-| `preprocess.py` | Feature schema, scaling, one-hot, artifact persistence | no |
+| `preprocess.py` | Feature schema, scaling, one-hot (no file I/O) | no |
 | `metrics.py` | MSE/RMSE/MAE/R², rolling residuals | no |
-| `artifacts.py` | Session directories, `feature_config.json` | no |
+| `session.py` | Owns every session-dir filename, the versioned manifest, load/save | no |
 | `model.py` | Keras model construction, GPU memory growth | yes |
 | `training.py` | Seeding, callbacks, sample weights, `fit` | yes |
 | `plots.py` | PNG training curves, interactive HTML reports | yes |
@@ -32,3 +32,14 @@ about a second because TensorFlow is never imported.
 `Preprocessor` resolves the numeric/categorical split **once**, during `fit`, and every later
 `transform` reuses it. Locate a column inside `X` with `preprocessor.index_of(name)` — the raw
 config order is not the axis-1 order once one-hot encoding expands categoricals.
+
+## Session-artifact contract
+
+`session.py` is the only module allowed to name a file in a session directory. Everything else
+registers with `SessionWriter` and gets a path back. `manifest.json` records the column contract
+exactly once plus an inventory of every file written, and `load_session()` reads it back,
+verifying that what the manifest claims is actually on disk.
+
+Sessions carry a `SCHEMA_VERSION`; mismatches raise `SchemaVersionError` rather than being
+migrated. If you add an artifact, register it with a role — an unregistered file is invisible
+to every reader.

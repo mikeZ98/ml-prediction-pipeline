@@ -57,6 +57,14 @@ suite fast. Run tests before declaring done.
 - **Feature order is not config order.** After one-hot expansion, axis 1 of `X` follows
   `Preprocessor.feature_names`. Locate a column with `preprocessor.index_of(name)` — never with
   `input_columns.index(name)`.
+- **One owner for session artifacts.** `session.py` names every file in a session directory;
+  no other module may spell one out. Write through `SessionWriter.register(role, filename)` and
+  use the path it returns. `manifest.json` is the single source of truth for the column
+  contract — never persist feature names or the schema anywhere else. Three modules once did,
+  they drifted, and the committed reference run silently stopped loading.
+- **Artifacts are rejected, not migrated.** A session whose `schema_version` differs raises
+  `SchemaVersionError`. Bump `SCHEMA_VERSION` on a breaking layout change; do not add
+  compatibility shims — regenerating a session takes seconds.
 - `X` is shaped `(rows, n_features, 1)`; Conv1D runs across the feature axis, not time.
 - Errors are explicit: raise from the `MlppError` hierarchy in `errors.py`, never return `None`
   to signal failure. The one exception is `transform`, which returns `y=None` when the target
