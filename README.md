@@ -128,10 +128,20 @@ is what keeps the fast suite fast.
 
 ---
 
+## 🤖 CI
+
+`.github/workflows/ci.yml` runs on every push and PR to `main`:
+
+- **quality** (Python 3.12 and 3.13) — `uv sync --locked`, then `ruff check`, `ruff format --check`,
+  `mypy --strict`, and the full `pytest` suite. `--locked` fails if `uv.lock` is stale against
+  `pyproject.toml` instead of silently re-resolving.
+- **notebook-drift** — regenerates `notebooks/01_train.ipynb` and fails if it differs, so the
+  generated notebook can never drift from `scripts/build_notebook.py`.
+
 ## 🗺️ Roadmap
 
 - [ ] `mlpp-predict` CLI: load a session directory, score a new CSV
-- [ ] GitHub Actions: `ruff` + `mypy` + `pytest -m 'not slow'` on push
+- [x] GitHub Actions: lint, types and tests on push
 - [ ] MLflow experiment tracking (optional)
 
 ---
