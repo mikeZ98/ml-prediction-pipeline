@@ -1,0 +1,7 @@
+node_modules/
+.git/
+.uv_cache/
+.venv/
+dist/
+.direnv/
+.pnpm_home/
