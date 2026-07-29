@@ -478,13 +478,13 @@ rejects anything it does not recognise.
 
 #### Automated
 
-- [x] 4.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 4.2 Regenerated example loads via `load_session`
-- [x] 4.3 Example contains a manifest: `test -f OUTPUTS/example/manifest.json`
-- [x] 4.4 No stale side-cars remain in `OUTPUTS/example/`
-- [ ] 4.5 CI passes on the branch (both Python versions plus notebook-drift)
+- [x] 4.1 Full suite passes: `cd apps/backend && uv run pytest` — 07e43c9
+- [x] 4.2 Regenerated example loads via `load_session` — 07e43c9
+- [x] 4.3 Example contains a manifest: `test -f OUTPUTS/example/manifest.json` — 07e43c9
+- [x] 4.4 No stale side-cars remain in `OUTPUTS/example/` — 07e43c9
+- [x] 4.5 CI passes on the branch (both Python versions plus notebook-drift) — 07e43c9
 
 #### Manual
 
-- [x] 4.6 README's artifact table matches the actual contents of the regenerated `OUTPUTS/example/`, file for file
-- [x] 4.7 CLAUDE.md's new invariant reads clearly enough that an agent would not add a second writer
+- [x] 4.6 README's artifact table matches the actual contents of the regenerated `OUTPUTS/example/`, file for file — 07e43c9
+- [x] 4.7 CLAUDE.md's new invariant reads clearly enough that an agent would not add a second writer — 07e43c9
