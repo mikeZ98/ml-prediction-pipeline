@@ -1,7 +1,7 @@
 ---
 change_id: s-05-notebook-consolidation
 title: Notebook consolidation — make the demo notebook verified and presentable
-status: preparing
+status: implementing
 created: 2026-07-30
 updated: 2026-07-30
 archived_at: null

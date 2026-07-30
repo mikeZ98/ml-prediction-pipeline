@@ -126,17 +126,28 @@ pd.DataFrame([row.as_dict() for row in result.rows])""",
         """from IPython.display import IFrame
 
 # Interactive truth-vs-prediction report for train stage 1 / test file 1.
-IFrame(str((result.session_dir / "prediction_analysis_tr01_te01.html").relative_to(Path.cwd())),
-       width="100%", height=850)""",
+# The path is relative to this notebook's own directory, which is fixed at
+# <repo>/notebooks — the browser resolves an IFrame src against that, not against
+# the kernel's cwd. Anchoring to Path.cwd() instead fails when the notebook is
+# opened from notebooks/, which is exactly where JupyterLab starts.
+report = result.session_dir / "prediction_analysis_tr01_te01.html"
+IFrame(str(Path("..") / report.relative_to(REPO_ROOT)), width="100%", height=850)""",
     ),
 ]
 
 
 def build() -> dict[str, object]:
     cells = []
-    for kind, source in CELLS:
+    for index, (kind, source) in enumerate(CELLS):
         lines = source.strip("\n").splitlines(keepends=True)
-        cell: dict[str, object] = {"cell_type": kind, "metadata": {}, "source": lines}
+        # nbformat >=4.5 requires a cell id, and warns that omitting one will become
+        # a hard error. Derived from the index so regeneration stays byte-identical.
+        cell: dict[str, object] = {
+            "cell_type": kind,
+            "id": f"cell-{index:02d}",
+            "metadata": {},
+            "source": lines,
+        }
         if kind == "code":
             cell |= {"execution_count": None, "outputs": []}
         cells.append(cell)
