@@ -407,16 +407,16 @@ called out in CLAUDE.md by phase 3.
 
 #### Automated
 
-- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 3.2 The committed notebook carries outputs on its code cells (not `"outputs": []`)
-- [x] 3.3 Source-only drift comparison passes against the committed notebook with outputs
-- [x] 3.4 Type checking passes: `uv run mypy src/mlpp`
-- [x] 3.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 3.6 CI passes on the branch (both Python versions plus the drift job)
+- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest` — ca1630d
+- [x] 3.2 The committed notebook carries outputs on its code cells (not `"outputs": []`) — ca1630d
+- [x] 3.3 Source-only drift comparison passes against the committed notebook with outputs — ca1630d
+- [x] 3.4 Type checking passes: `uv run mypy src/mlpp` — ca1630d
+- [x] 3.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — ca1630d
+- [x] 3.6 CI passes on the branch (both Python versions plus the drift job) — ca1630d
 
 #### Manual
 
-- [ ] 3.7 The notebook renders with visible outputs on GitHub's blob view
-- [x] 3.8 Committed notebook JSON has not grown unreasonably
-- [x] 3.9 Following README's regeneration procedure reproduces the committed notebook, outputs included
-- [x] 3.10 CLAUDE.md would stop a future agent from hand-editing or output-stripping the notebook
+- [x] 3.7 The notebook renders with visible outputs on GitHub's blob view — ca1630d
+- [x] 3.8 Committed notebook JSON has not grown unreasonably — ca1630d
+- [x] 3.9 Following README's regeneration procedure reproduces the committed notebook, outputs included — ca1630d
+- [x] 3.10 CLAUDE.md would stop a future agent from hand-editing or output-stripping the notebook — ca1630d
