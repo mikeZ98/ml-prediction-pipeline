@@ -387,36 +387,36 @@ called out in CLAUDE.md by phase 3.
 
 #### Automated
 
-- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 2.2 Notebook tests pass, including the determinism check: `uv run pytest tests/test_notebook.py -v`
-- [x] 2.3 No reference to `01_train` survives outside `frame.md`
-- [x] 2.4 The old `notebooks/01_train.ipynb` no longer exists
-- [x] 2.5 The notebook contains no `run_pipeline` call
-- [x] 2.6 Type checking passes: `uv run mypy src/mlpp`
-- [x] 2.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 2.8 Source-only drift comparison passes for the renamed notebook
+- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest` — d86a6b7
+- [x] 2.2 Notebook tests pass, including the determinism check: `uv run pytest tests/test_notebook.py -v` — d86a6b7
+- [x] 2.3 No reference to `01_train` survives outside `frame.md` — d86a6b7
+- [x] 2.4 The old `notebooks/01_train.ipynb` no longer exists — d86a6b7
+- [x] 2.5 The notebook contains no `run_pipeline` call — d86a6b7
+- [x] 2.6 Type checking passes: `uv run mypy src/mlpp` — d86a6b7
+- [x] 2.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — d86a6b7
+- [x] 2.8 Source-only drift comparison passes for the renamed notebook — d86a6b7
 
 #### Manual
 
-- [x] 2.9 The narrative reads as an executive report — understandable without running anything
-- [x] 2.10 Metrics shown match `OUTPUTS/example/test_metrics.csv`
-- [x] 2.11 The predictions cell shows values in the target's real units, not scaled space
-- [x] 2.12 The IFrame renders the committed interactive plot when opened from `notebooks/`
+- [x] 2.9 The narrative reads as an executive report — understandable without running anything — d86a6b7
+- [x] 2.10 Metrics shown match `OUTPUTS/example/test_metrics.csv` — d86a6b7
+- [x] 2.11 The predictions cell shows values in the target's real units, not scaled space — d86a6b7
+- [x] 2.12 The IFrame renders the committed interactive plot when opened from `notebooks/` — d86a6b7
 
 ### Phase 3: Commit executed outputs and document the report
 
 #### Automated
 
-- [ ] 3.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [ ] 3.2 The committed notebook carries outputs on its code cells (not `"outputs": []`)
-- [ ] 3.3 Source-only drift comparison passes against the committed notebook with outputs
-- [ ] 3.4 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 3.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest`
+- [x] 3.2 The committed notebook carries outputs on its code cells (not `"outputs": []`)
+- [x] 3.3 Source-only drift comparison passes against the committed notebook with outputs
+- [x] 3.4 Type checking passes: `uv run mypy src/mlpp`
+- [x] 3.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
 - [ ] 3.6 CI passes on the branch (both Python versions plus the drift job)
 
 #### Manual
 
 - [ ] 3.7 The notebook renders with visible outputs on GitHub's blob view
-- [ ] 3.8 Committed notebook JSON has not grown unreasonably
-- [ ] 3.9 Following README's regeneration procedure reproduces the committed notebook, outputs included
-- [ ] 3.10 CLAUDE.md would stop a future agent from hand-editing or output-stripping the notebook
+- [x] 3.8 Committed notebook JSON has not grown unreasonably
+- [x] 3.9 Following README's regeneration procedure reproduces the committed notebook, outputs included
+- [x] 3.10 CLAUDE.md would stop a future agent from hand-editing or output-stripping the notebook

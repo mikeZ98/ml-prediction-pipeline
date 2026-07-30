@@ -14,9 +14,9 @@ artifact directory under `OUTPUTS/`. **Python only — there is no frontend and 
   - `apps/backend/` — the `mlpp` uv project (src layout + tests). All logic lives here.
   - `notebooks/01_exploration_and_baseline.ipynb` — demonstration report reading the committed
     `OUTPUTS/example/` session; **never** re-add pipeline logic to it and never hand-edit the
-    `.ipynb`. Regenerate with `uv run --project apps/backend python scripts/build_notebook.py`.
-    Its **outputs are committed** so it renders on GitHub, but regenerating strips them — re-execute
-    before committing. CI compares cell source only, so nothing will warn you if you don't.
+    `.ipynb`. Its **outputs are committed** so it renders on GitHub, so regenerate with
+    `uv run --project apps/backend python scripts/build_notebook.py --execute` — the bare command
+    strips the outputs and the drift gate (source-only) will not warn you.
   - `TRAIN/`, `TEST/` — input CSVs. `OUTPUTS/` — run artifacts (git-ignored except `example/`).
   - `scripts/` — repo-level helpers.
 - Add `apps/frontend/` or `infrastructure/` only when something real goes in them.
