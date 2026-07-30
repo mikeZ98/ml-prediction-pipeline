@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Regenerate notebooks/01_train.ipynb from the cell definitions below.
+"""Regenerate notebooks/01_exploration_and_baseline.ipynb from the cells below.
 
-The notebook is a thin driver over the `mlpp` package — keeping its source here
-means the pipeline logic lives in one place (apps/backend/src/mlpp) and the
-notebook JSON never drifts from it.
+The notebook is a demonstration report over the committed `OUTPUTS/example/`
+session: it reads a trained session's contract, metrics and predictions rather
+than training anything. Keeping its source here means the logic lives in one
+place (apps/backend/src/mlpp) and the notebook JSON never drifts from it.
+
+The committed notebook carries executed outputs so it renders on GitHub without
+being run. Regenerating with this script alone produces an output-free notebook —
+re-execute it before committing if you want the outputs refreshed. The CI drift
+check compares cell source only, so outputs never fail the gate.
 
     uv run --project apps/backend python scripts/build_notebook.py
 """
@@ -14,124 +20,162 @@ import json
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-NOTEBOOK = REPO_ROOT / "notebooks" / "01_train.ipynb"
+NOTEBOOK = REPO_ROOT / "notebooks" / "01_exploration_and_baseline.ipynb"
 
 CELLS: list[tuple[str, str]] = [
     (
         "markdown",
-        """# Training pipeline
+        """# Sequential time-series regression — exploration & baseline
 
-Thin driver over the `mlpp` package (`apps/backend/src/mlpp`). All logic —
-preprocessing, model, training, evaluation — lives there and is unit-tested;
-this notebook only chooses the configuration and inspects the results.
+A demonstration report over the committed reference run in `OUTPUTS/example/`.
 
-Setup (once, from the repo root):
+**The model.** A Conv1D → stacked Bi-GRU → linear head regressor (Keras 3 on
+TensorFlow), trained sequentially over `TRAIN/*.csv` and evaluated against every
+`TEST/*.csv` after each stage.
 
-```bash
-uv sync --project apps/backend --all-groups
-uv run --project apps/backend python -m ipykernel install --user --name mlpp
-```
+**What this notebook does.** It *reads* a trained session — nothing is trained
+here. Everything below comes from `OUTPUTS/example/`, a committed artifact
+directory, so this report is deterministic and needs no data, no GPU and no
+training run to reproduce. All logic lives in the tested `mlpp` package
+(`apps/backend/src/mlpp`); the cells only call into it.
 
-Prefer a one-liner? `uv run --project apps/backend mlpp-train --epochs 5`
+To train your own session or score your own CSV, see the two CLIs at the end.
+""",
+    ),
+    (
+        "markdown",
+        """## The session contract
+
+Every session directory carries a `manifest.json` that is the single source of
+truth for what the model expects and what the directory contains. A reader never
+has to guess a filename or restate the column list — it asks the manifest.
+
+Note that `load_session` is TensorFlow-free: inspecting and validating a session
+is cheap, and the model is only loaded when you actually score something.
 """,
     ),
     (
         "code",
-        """import logging
-from pathlib import Path
+        """from pathlib import Path
 
-from mlpp.config import ColumnConfig, DataConfig, EvalConfig, PipelineConfig, TrainConfig
-from mlpp.model import configure_gpu_memory_growth
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+from mlpp.config import ColumnConfig
+from mlpp.session import read_manifest, load_session
 
 REPO_ROOT = Path.cwd().parent if Path.cwd().name == "notebooks" else Path.cwd()
-print("repo root:", REPO_ROOT)
-print("GPUs with memory growth enabled:", configure_gpu_memory_growth())""",
-    ),
-    (
-        "markdown",
-        """## Configuration
+SESSION_DIR = REPO_ROOT / "OUTPUTS" / "example"
 
-Every knob the old notebook exposed as a module-level global is now a field on
-one of four frozen dataclasses. They validate on construction, so a bad value
-fails here rather than deep inside training.""",
-    ),
-    (
-        "code",
-        """# Which columns matter — the contract a trained session records in its manifest.
+# The column contract comes from the manifest, not from a hardcoded list.
+features = read_manifest(SESSION_DIR).features
 columns = ColumnConfig(
-    input_columns=(
-        "feature_01", "feature_02", "feature_03", "feature_04", "feature_05", "feature_06",
-        "feature_07", "feature_08", "feature_09", "feature_10", "feature_11", "feature_12",
-        "comp_active",
-    ),
-    output_column="target",
-    categorical_columns=(),   # one-hot these regardless of dtype
-    strict_schema=True,       # False -> fill missing input columns with 0.0
+    input_columns=features.numeric_columns + features.categorical_columns,
+    output_column=features.output_column,
+    categorical_columns=features.categorical_columns,
 )
 
-# Where the data lives. Kept separate from the column contract so a reader that
-# scores an existing session needs only `columns`, never these directories.
-data = DataConfig(
-    train_dir=REPO_ROOT / "TRAIN",
-    test_dir=REPO_ROOT / "TEST",
-    output_dir=REPO_ROOT / "OUTPUTS",
-    columns=columns,
-    test_files=(),            # e.g. ("sample_test_A.csv",); empty = glob TEST/
-)
+session = load_session(SESSION_DIR, columns)
+manifest = session.manifest
 
-training = TrainConfig(
-    epochs=5,
-    batch_size=128,
-    seed=50,
-    loss="mse",               # or "huber"
-    active_weight_alpha=0.0,  # >0 up-weights rows where comp_active != 0
-)
-
-evaluation = EvalConfig(rolling_window=500, write_plots=True)
-
-cfg = PipelineConfig(data=data, train=training, eval=evaluation)
-cfg""",
+print(f"schema version : {manifest.schema_version}")
+print(f"trained        : {manifest.created}")
+print(f"target         : {features.output_column}")
+print(f"inputs         : {len(features.numeric_columns)} numeric, "
+      f"{len(features.categorical_columns)} categorical")
+print(f"model features : {session.preprocessor.n_features} (after one-hot expansion)")
+print(f"artifacts      : {len(manifest.artifacts)} files recorded")""",
     ),
     (
         "markdown",
-        """## Run
+        """## Baseline accuracy
 
-Trains on each `TRAIN/*.csv` in turn — reusing the feature space fitted on the
-first file — and evaluates against every `TEST/*.csv` after each stage.""",
-    ),
-    (
-        "code",
-        """from mlpp.pipeline import run_pipeline
-
-result = run_pipeline(cfg)
-print("artifacts ->", result.session_dir)""",
-    ),
-    (
-        "markdown",
-        """## Results
-
-`test_metrics.csv`, the training curves and the interactive HTML diff plots are
-all written into the timestamped session directory.""",
+Recorded at training time, one row per (train stage, test file) pair. The model
+trains on each `TRAIN` file in turn while reusing the feature space fitted on the
+first one, so later stages show the effect of additional data.
+""",
     ),
     (
         "code",
         """import pandas as pd
 
-pd.DataFrame([row.as_dict() for row in result.rows])""",
+from mlpp.session import ROLE_METRICS
+
+# Filename resolved through the manifest — session.py owns every name in here.
+metrics_file = manifest.filenames_for(ROLE_METRICS)[0]
+metrics = pd.read_csv(SESSION_DIR / metrics_file)
+metrics.round(4)""",
+    ),
+    (
+        "markdown",
+        """## Scoring new data
+
+The same session can score a CSV it has never seen, through the inference seam
+(`mlpp.predict`). Predictions come back in the target's original units — the
+target scaler is inverted on the way out, so these are directly comparable to the
+truth column rather than living in standardised space.
+
+Unseen categorical levels would be reported here rather than silently encoded as
+zeros; this input has none.
+""",
+    ),
+    (
+        "code",
+        """from mlpp.data import read_csv_auto
+from mlpp.predict import load_model, score_frame
+
+frame = read_csv_auto(REPO_ROOT / "TEST" / "sample_test_A.csv")
+scored = score_frame(session, load_model(session), frame)
+
+comparison = pd.DataFrame({
+    "actual": frame[features.output_column],
+    "predicted": scored.predictions,
+})
+comparison["error"] = comparison["predicted"] - comparison["actual"]
+
+print(f"rows scored     : {len(comparison)}")
+print(f"unseen levels   : {scored.describe_unseen() or 'none'}")
+print()
+print(comparison.describe().loc[["mean", "std", "min", "max"]].round(4))
+comparison.head()""",
+    ),
+    (
+        "markdown",
+        """## Truth vs prediction
+
+The interactive report below is a committed artifact of the reference run — pan
+and zoom to inspect where the model tracks the signal and where it drifts.
+""",
     ),
     (
         "code",
         """from IPython.display import IFrame
 
-# Interactive truth-vs-prediction report for train stage 1 / test file 1.
-# The path is relative to this notebook's own directory, which is fixed at
-# <repo>/notebooks — the browser resolves an IFrame src against that, not against
-# the kernel's cwd. Anchoring to Path.cwd() instead fails when the notebook is
-# opened from notebooks/, which is exactly where JupyterLab starts.
-report = result.session_dir / "prediction_analysis_tr01_te01.html"
-IFrame(str(Path("..") / report.relative_to(REPO_ROOT)), width="100%", height=850)""",
+from mlpp.session import ROLE_PREDICTION_ANALYSIS
+
+# An IFrame src is resolved by the browser against this notebook's own directory
+# (<repo>/notebooks), which is fixed — so the path is relative to that, never to
+# the kernel's cwd. The filename itself comes from the manifest.
+report_name = manifest.filenames_for(ROLE_PREDICTION_ANALYSIS)[0]
+IFrame(f"../OUTPUTS/example/{report_name}", width="100%", height=850)""",
+    ),
+    (
+        "markdown",
+        """## Running it yourself
+
+Everything above reads an existing session. To produce or consume one, from
+`apps/backend/`:
+
+```bash
+# train a new session into OUTPUTS/<timestamp>/
+uv run mlpp-train --epochs 5
+uv run mlpp-train --help      # columns, loss, seed, batch size, plots…
+
+# score a CSV against any session directory
+uv run mlpp-predict --session ../../OUTPUTS/example \\
+  --input ../../TEST/sample_test_A.csv --output preds.csv
+```
+
+This notebook is generated from `scripts/build_notebook.py` and must not be
+hand-edited; CI checks its source against the generator.
+""",
     ),
 ]
 

@@ -13,6 +13,7 @@ remove — CI syncs the `notebook` dependency group so the import must succeed.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import nbformat
@@ -22,7 +23,7 @@ from nbclient import NotebookClient
 pytestmark = pytest.mark.slow
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-NOTEBOOK = REPO_ROOT / "notebooks" / "01_train.ipynb"
+NOTEBOOK = REPO_ROOT / "notebooks" / "01_exploration_and_baseline.ipynb"
 
 #: The committed notebook names the `mlpp` kernel, which only exists once a human
 #: runs `ipykernel install --name mlpp`. Executing here overrides it rather than
@@ -69,6 +70,52 @@ def test_notebook_executes_from_its_own_directory() -> None:
     """
     executed = _execute(NOTEBOOK.parent)
     assert executed.cells, "notebook has no cells"
+
+
+#: CPython's default object repr ends in `at 0x<address>`, which varies per run.
+#: Normalised rather than dropped, so a cell that starts returning a *different
+#: kind* of object is still caught while the address itself is ignored.
+_ADDRESS = re.compile(r" at 0x[0-9a-fA-F]+")
+
+
+def _text_outputs(notebook: nbformat.NotebookNode) -> list[str]:
+    """Text-bearing outputs only, in cell order, with memory addresses normalised.
+
+    Deliberately narrow. `display_data` payloads can embed binary image data and
+    HTML reprs can embed session timestamps, neither guaranteed byte-stable, so
+    comparing them would make the determinism check flaky for reasons that say
+    nothing about the report's reproducibility.
+    """
+    collected: list[str] = []
+    for cell in notebook.cells:
+        for output in cell.get("outputs", []):
+            if output.get("output_type") == "stream":
+                text = "".join(output.get("text", ""))
+            elif output.get("output_type") == "execute_result":
+                text = "".join(output.get("data", {}).get("text/plain", ""))
+            else:
+                continue
+            collected.append(_ADDRESS.sub(" at 0xADDR", text))
+    return collected
+
+
+def test_report_is_deterministic() -> None:
+    """Two runs must agree — the property that makes committed outputs trustworthy.
+
+    The report reads a committed session rather than training, so nothing here
+    should vary between runs. If this fails, the notebook grew a dependency on
+    wall-clock time, filesystem ordering or an untamed random seed.
+    """
+    first = _text_outputs(_execute(REPO_ROOT))
+    second = _text_outputs(_execute(REPO_ROOT))
+    assert first == second
+
+
+def test_report_does_not_train() -> None:
+    """The report reads a session; training belongs to mlpp-train and the suite."""
+    notebook = nbformat.read(NOTEBOOK, as_version=4)
+    source = "\n".join("".join(cell.get("source", "")) for cell in notebook.cells)
+    assert "run_pipeline" not in source, "the report must not train a model"
 
 
 def test_every_code_cell_carries_an_id() -> None:

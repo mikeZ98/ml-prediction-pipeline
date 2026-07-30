@@ -12,8 +12,11 @@ artifact directory under `OUTPUTS/`. **Python only — there is no frontend and 
   project-local (see `.envrc`); never write to $HOME or the internal disk.
 - Layout:
   - `apps/backend/` — the `mlpp` uv project (src layout + tests). All logic lives here.
-  - `notebooks/01_train.ipynb` — thin driver over `mlpp`; **never** re-add pipeline logic to it.
-    Regenerate with `uv run --project apps/backend python scripts/build_notebook.py`.
+  - `notebooks/01_exploration_and_baseline.ipynb` — demonstration report reading the committed
+    `OUTPUTS/example/` session; **never** re-add pipeline logic to it and never hand-edit the
+    `.ipynb`. Regenerate with `uv run --project apps/backend python scripts/build_notebook.py`.
+    Its **outputs are committed** so it renders on GitHub, but regenerating strips them — re-execute
+    before committing. CI compares cell source only, so nothing will warn you if you don't.
   - `TRAIN/`, `TEST/` — input CSVs. `OUTPUTS/` — run artifacts (git-ignored except `example/`).
   - `scripts/` — repo-level helpers.
 - Add `apps/frontend/` or `infrastructure/` only when something real goes in them.
@@ -38,7 +41,7 @@ uv run mlpp-predict --session ../../OUTPUTS/example --input ../../TEST/sample_te
 ```
 
 Notebook: `uv run python -m ipykernel install --user --name mlpp`, then open
-`notebooks/01_train.ipynb` and select the `mlpp` kernel.
+`notebooks/01_exploration_and_baseline.ipynb` and select the `mlpp` kernel.
 
 ## Testing patterns
 One test module per source module, in `apps/backend/tests/` mirroring `src/mlpp/`.
