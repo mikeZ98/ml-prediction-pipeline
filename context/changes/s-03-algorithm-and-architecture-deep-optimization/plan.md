@@ -437,54 +437,54 @@ rejects anything it does not recognise.
 
 #### Automated
 
-- [x] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'` — 845bb60
-- [x] 1.2 New module imports no TensorFlow — 845bb60
-- [x] 1.3 Type checking passes: `uv run mypy src/mlpp` — 845bb60
-- [x] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — 845bb60
+- [x] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'` — 6eed371
+- [x] 1.2 New module imports no TensorFlow — 6eed371
+- [x] 1.3 Type checking passes: `uv run mypy src/mlpp` — 6eed371
+- [x] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — 6eed371
 
 #### Manual
 
-- [x] 1.5 The manifest JSON is human-readable and its field names are self-explanatory when opened in an editor — 845bb60
+- [x] 1.5 The manifest JSON is human-readable and its field names are self-explanatory when opened in an editor — 6eed371
 
 ### Phase 2: Route all writers through the owner
 
 #### Automated
 
-- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest` — e0e6825
-- [x] 2.2 No filename literals remain outside the owner — e0e6825
-- [x] 2.3 Type checking passes: `uv run mypy src/mlpp` — e0e6825
-- [x] 2.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — e0e6825
-- [x] 2.5 A real run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet` — e0e6825
+- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest` — b996cfc
+- [x] 2.2 No filename literals remain outside the owner — b996cfc
+- [x] 2.3 Type checking passes: `uv run mypy src/mlpp` — b996cfc
+- [x] 2.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — b996cfc
+- [x] 2.5 A real run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet` — b996cfc
 
 #### Manual
 
-- [x] 2.6 A freshly produced session directory contains `manifest.json` and no `feature_config.json` or `model_iter_NN_config.json` — e0e6825
-- [x] 2.7 Opening the manifest shows the feature contract exactly once, with no duplicated fields — e0e6825
+- [x] 2.6 A freshly produced session directory contains `manifest.json` and no `feature_config.json` or `model_iter_NN_config.json` — b996cfc
+- [x] 2.7 Opening the manifest shows the feature contract exactly once, with no duplicated fields — b996cfc
 
 ### Phase 3: Load-and-verify path
 
 #### Automated
 
-- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest` — 61b1fe6
-- [x] 3.2 Round-trip test present and passing: `uv run pytest -k round_trip -v` — 61b1fe6
-- [x] 3.3 `session.py` still imports no TensorFlow — 61b1fe6
-- [x] 3.4 Type checking passes: `uv run mypy src/mlpp` — 61b1fe6
+- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest` — 1b777db
+- [x] 3.2 Round-trip test present and passing: `uv run pytest -k round_trip -v` — 1b777db
+- [x] 3.3 `session.py` still imports no TensorFlow — 1b777db
+- [x] 3.4 Type checking passes: `uv run mypy src/mlpp` — 1b777db
 
 #### Manual
 
-- [x] 3.5 Pointing `load_session` at the old pre-change `OUTPUTS/example/` produces an error naming both the version found and the version expected — 61b1fe6
+- [x] 3.5 Pointing `load_session` at the old pre-change `OUTPUTS/example/` produces an error naming both the version found and the version expected — 1b777db
 
 ### Phase 4: Regenerate reference run and update docs
 
 #### Automated
 
-- [x] 4.1 Full suite passes: `cd apps/backend && uv run pytest` — 07e43c9
-- [x] 4.2 Regenerated example loads via `load_session` — 07e43c9
-- [x] 4.3 Example contains a manifest: `test -f OUTPUTS/example/manifest.json` — 07e43c9
-- [x] 4.4 No stale side-cars remain in `OUTPUTS/example/` — 07e43c9
-- [x] 4.5 CI passes on the branch (both Python versions plus notebook-drift) — 07e43c9
+- [x] 4.1 Full suite passes: `cd apps/backend && uv run pytest` — 4e4d17c
+- [x] 4.2 Regenerated example loads via `load_session` — 4e4d17c
+- [x] 4.3 Example contains a manifest: `test -f OUTPUTS/example/manifest.json` — 4e4d17c
+- [x] 4.4 No stale side-cars remain in `OUTPUTS/example/` — 4e4d17c
+- [x] 4.5 CI passes on the branch (both Python versions plus notebook-drift) — 4e4d17c
 
 #### Manual
 
-- [x] 4.6 README's artifact table matches the actual contents of the regenerated `OUTPUTS/example/`, file for file — 07e43c9
-- [x] 4.7 CLAUDE.md's new invariant reads clearly enough that an agent would not add a second writer — 07e43c9
+- [x] 4.6 README's artifact table matches the actual contents of the regenerated `OUTPUTS/example/`, file for file — 4e4d17c
+- [x] 4.7 CLAUDE.md's new invariant reads clearly enough that an agent would not add a second writer — 4e4d17c
