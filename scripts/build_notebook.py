@@ -40,7 +40,7 @@ Prefer a one-liner? `uv run --project apps/backend mlpp-train --epochs 5`
         """import logging
 from pathlib import Path
 
-from mlpp.config import DataConfig, EvalConfig, PipelineConfig, TrainConfig
+from mlpp.config import ColumnConfig, DataConfig, EvalConfig, PipelineConfig, TrainConfig
 from mlpp.model import configure_gpu_memory_growth
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -54,15 +54,13 @@ print("GPUs with memory growth enabled:", configure_gpu_memory_growth())""",
         """## Configuration
 
 Every knob the old notebook exposed as a module-level global is now a field on
-one of three frozen dataclasses. They validate on construction, so a bad value
+one of four frozen dataclasses. They validate on construction, so a bad value
 fails here rather than deep inside training.""",
     ),
     (
         "code",
-        """data = DataConfig(
-    train_dir=REPO_ROOT / "TRAIN",
-    test_dir=REPO_ROOT / "TEST",
-    output_dir=REPO_ROOT / "OUTPUTS",
+        """# Which columns matter — the contract a trained session records in its manifest.
+columns = ColumnConfig(
     input_columns=(
         "feature_01", "feature_02", "feature_03", "feature_04", "feature_05", "feature_06",
         "feature_07", "feature_08", "feature_09", "feature_10", "feature_11", "feature_12",
@@ -71,6 +69,15 @@ fails here rather than deep inside training.""",
     output_column="target",
     categorical_columns=(),   # one-hot these regardless of dtype
     strict_schema=True,       # False -> fill missing input columns with 0.0
+)
+
+# Where the data lives. Kept separate from the column contract so a reader that
+# scores an existing session needs only `columns`, never these directories.
+data = DataConfig(
+    train_dir=REPO_ROOT / "TRAIN",
+    test_dir=REPO_ROOT / "TEST",
+    output_dir=REPO_ROOT / "OUTPUTS",
+    columns=columns,
     test_files=(),            # e.g. ("sample_test_A.csv",); empty = glob TEST/
 )
 
