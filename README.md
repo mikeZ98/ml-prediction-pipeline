@@ -21,14 +21,16 @@ End-to-end pipeline for **time-series / tabular regression**:
 │  ├─ tests/                     #   one test module per source module
 │  ├─ pyproject.toml             #   deps, pytest/ruff/mypy config
 │  └─ uv.lock                    #   pinned, committed
-├─ notebooks/01_train.ipynb      # thin driver over `mlpp` (generated — see below)
+├─ notebooks/                    # demo report over OUTPUTS/example (generated — see below)
+│  └─ 01_exploration_and_baseline.ipynb
 ├─ TRAIN/                        # training CSVs (samples included)
 ├─ TEST/                         # test CSVs (samples included)
 ├─ OUTPUTS/                      # run artifacts, git-ignored except example/
 │  └─ example/                   # a committed reference run
 ├─ scripts/
 │  ├─ quickstart.sh              # sync + train in one command
-│  └─ build_notebook.py          # regenerates notebooks/01_train.ipynb
+│  ├─ build_notebook.py          # regenerates the notebook from its cell source
+│  └─ check_notebook_drift.py    # fails if the notebook's source left the generator
 ├─ CLAUDE.md · .cursorrules      # agent context
 ├─ LICENSE
 └─ README.md
@@ -86,18 +88,31 @@ Two things worth knowing:
   affected columns and row count on stderr and exits `0`, so one stray value cannot
   kill a batch — but you should treat those rows as suspect.
 
-### Notebook
+### Notebook — demonstration report
+
+`notebooks/01_exploration_and_baseline.ipynb` is a **report, not an exercise**: it reads the
+committed `OUTPUTS/example/` session and shows the feature contract, the recorded baseline metrics,
+freshly scored predictions in the target's own units, and the interactive truth-vs-prediction plot.
+It trains nothing, so it is deterministic and needs no data or GPU — and because its outputs are
+committed, you can read the whole thing on GitHub without running it.
+
+To run it yourself:
 
 ```bash
 cd apps/backend && uv run python -m ipykernel install --user --name mlpp
 ```
 
-Open `notebooks/01_train.ipynb` and pick the `mlpp` kernel. The notebook only builds a config and
-calls `run_pipeline` — the logic lives in the package, so it stays testable. It is generated:
+Then open the notebook and pick the `mlpp` kernel. All logic lives in the `mlpp` package, so the
+cells only call into tested code. It is generated:
 
 ```bash
 uv run --project apps/backend python scripts/build_notebook.py
 ```
+
+> **Regenerating strips the committed outputs.** `build_notebook.py` emits an output-free
+> notebook, so if you regenerate and want the report to keep rendering on GitHub, re-execute
+> it before committing. CI compares cell *source* only, so outputs never fail the gate —
+> which is also why nothing will warn you if you commit it output-stripped.
 
 ---
 
@@ -173,8 +188,11 @@ is what keeps the fast suite fast — and is why reading a saved session never n
 - **quality** (Python 3.12 and 3.13) — `uv sync --locked`, then `ruff check`, `ruff format --check`,
   `mypy --strict`, and the full `pytest` suite. `--locked` fails if `uv.lock` is stale against
   `pyproject.toml` instead of silently re-resolving.
-- **notebook-drift** — regenerates `notebooks/01_train.ipynb` and fails if it differs, so the
-  generated notebook can never drift from `scripts/build_notebook.py`.
+- **notebook-drift** — `scripts/check_notebook_drift.py` compares the committed notebook's cell
+  source against `scripts/build_notebook.py`, ignoring `outputs` and `execution_count` so the
+  report can carry executed results while its code still comes from the generator. The `quality`
+  job additionally *executes* the notebook (`tests/test_notebook.py`) — the drift check alone
+  proves only that nobody hand-edited it, not that it still runs.
 
 ## 🗺️ Roadmap
 

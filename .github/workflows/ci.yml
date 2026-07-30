@@ -78,7 +78,7 @@ jobs:
           cache-dependency-glob: apps/backend/uv.lock
 
       - name: Check the notebook source matches its generator
-        # notebooks/01_train.ipynb is generated; it must never be hand-edited.
+        # The notebook is generated; it must never be hand-edited.
         # Compares cell type/id/source and notebook metadata, ignoring `outputs`
         # and `execution_count` so the committed notebook can carry executed
         # results while its code still comes from scripts/build_notebook.py.

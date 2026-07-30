@@ -368,40 +368,40 @@ called out in CLAUDE.md by phase 3.
 
 #### Automated
 
-- [x] 1.1 Generation is idempotent: running `scripts/build_notebook.py` twice yields identical files
-- [x] 1.2 Notebook regeneration produces no `MissingIDFieldWarning`
-- [x] 1.3 New tests pass: `cd apps/backend && uv run pytest tests/test_notebook.py -v`
-- [x] 1.4 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 1.5 Fast suite stays TensorFlow-free and fast: `uv run pytest -m 'not slow'`
-- [x] 1.6 Type checking passes: `uv run mypy src/mlpp`
-- [x] 1.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 1.8 The source-only drift comparison passes against the committed notebook
-- [x] 1.9 The drift comparison still fails when a cell's source is deliberately altered
+- [x] 1.1 Generation is idempotent: running `scripts/build_notebook.py` twice yields identical files — d700f3d
+- [x] 1.2 Notebook regeneration produces no `MissingIDFieldWarning` — d700f3d
+- [x] 1.3 New tests pass: `cd apps/backend && uv run pytest tests/test_notebook.py -v` — d700f3d
+- [x] 1.4 Full suite passes: `cd apps/backend && uv run pytest` — d700f3d
+- [x] 1.5 Fast suite stays TensorFlow-free and fast: `uv run pytest -m 'not slow'` — d700f3d
+- [x] 1.6 Type checking passes: `uv run mypy src/mlpp` — d700f3d
+- [x] 1.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — d700f3d
+- [x] 1.8 The source-only drift comparison passes against the committed notebook — d700f3d
+- [x] 1.9 The drift comparison still fails when a cell's source is deliberately altered — d700f3d
 
 #### Manual
 
-- [x] 1.10 Running all cells in JupyterLab from `notebooks/` completes without error, including the final IFrame cell
-- [x] 1.11 The drift job's failure message still tells a reader how to regenerate
+- [x] 1.10 Running all cells in JupyterLab from `notebooks/` completes without error, including the final IFrame cell — d700f3d
+- [x] 1.11 The drift job's failure message still tells a reader how to regenerate — d700f3d
 
 ### Phase 2: Rewrite as a demonstration report
 
 #### Automated
 
-- [ ] 2.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [ ] 2.2 Notebook tests pass, including the determinism check: `uv run pytest tests/test_notebook.py -v`
-- [ ] 2.3 No reference to `01_train` survives outside `frame.md`
-- [ ] 2.4 The old `notebooks/01_train.ipynb` no longer exists
-- [ ] 2.5 The notebook contains no `run_pipeline` call
-- [ ] 2.6 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 2.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 2.8 Source-only drift comparison passes for the renamed notebook
+- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest`
+- [x] 2.2 Notebook tests pass, including the determinism check: `uv run pytest tests/test_notebook.py -v`
+- [x] 2.3 No reference to `01_train` survives outside `frame.md`
+- [x] 2.4 The old `notebooks/01_train.ipynb` no longer exists
+- [x] 2.5 The notebook contains no `run_pipeline` call
+- [x] 2.6 Type checking passes: `uv run mypy src/mlpp`
+- [x] 2.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 2.8 Source-only drift comparison passes for the renamed notebook
 
 #### Manual
 
-- [ ] 2.9 The narrative reads as an executive report — understandable without running anything
-- [ ] 2.10 Metrics shown match `OUTPUTS/example/test_metrics.csv`
-- [ ] 2.11 The predictions cell shows values in the target's real units, not scaled space
-- [ ] 2.12 The IFrame renders the committed interactive plot when opened from `notebooks/`
+- [x] 2.9 The narrative reads as an executive report — understandable without running anything
+- [x] 2.10 Metrics shown match `OUTPUTS/example/test_metrics.csv`
+- [x] 2.11 The predictions cell shows values in the target's real units, not scaled space
+- [x] 2.12 The IFrame renders the committed interactive plot when opened from `notebooks/`
 
 ### Phase 3: Commit executed outputs and document the report
 
