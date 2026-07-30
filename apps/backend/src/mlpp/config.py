@@ -32,19 +32,19 @@ DEFAULT_ACTIVE_COLUMN = "comp_active"
 
 
 @dataclass(frozen=True, slots=True)
-class DataConfig:
-    """Where the data lives and which columns matter."""
+class ColumnConfig:
+    """Which columns matter — the contract, independent of where the data lives.
 
-    train_dir: Path
-    test_dir: Path
-    output_dir: Path
+    Split out of `DataConfig` so a reader that scores an existing session can
+    supply the column contract without inventing train/test/output directories it
+    has no use for. `preprocess` and `session` depend on this, never on the paths.
+    """
+
     input_columns: tuple[str, ...] = DEFAULT_INPUT_COLUMNS
     output_column: str = DEFAULT_OUTPUT_COLUMN
     categorical_columns: tuple[str, ...] = ()
     #: True -> a missing input column raises SchemaError; False -> fill it with 0.0.
     strict_schema: bool = True
-    #: Explicit test filenames (relative to `test_dir`); empty means "glob everything".
-    test_files: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         unknown = set(self.categorical_columns) - set(self.input_columns)
@@ -54,6 +54,18 @@ class DataConfig:
         if self.output_column in self.input_columns:
             msg = f"output_column {self.output_column!r} must not also be an input column"
             raise ValueError(msg)
+
+
+@dataclass(frozen=True, slots=True)
+class DataConfig:
+    """Where the data lives, plus the column contract it follows."""
+
+    train_dir: Path
+    test_dir: Path
+    output_dir: Path
+    columns: ColumnConfig = field(default_factory=ColumnConfig)
+    #: Explicit test filenames (relative to `test_dir`); empty means "glob everything".
+    test_files: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

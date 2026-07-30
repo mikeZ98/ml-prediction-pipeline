@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from mlpp.config import DataConfig
+from mlpp.config import ColumnConfig
 from mlpp.errors import NotFittedError, SchemaError
 
 
@@ -46,7 +46,7 @@ class FittedState:
     onehot: OneHotEncoder
 
 
-def resolve_schema(df: pd.DataFrame, cfg: DataConfig) -> FeatureSchema:
+def resolve_schema(df: pd.DataFrame, cfg: ColumnConfig) -> FeatureSchema:
     """Split `cfg.input_columns` into numeric and categorical using `df`'s dtypes.
 
     Columns named in `cfg.categorical_columns` are categorical regardless of dtype.
@@ -61,7 +61,7 @@ def resolve_schema(df: pd.DataFrame, cfg: DataConfig) -> FeatureSchema:
     return FeatureSchema(tuple(numeric), tuple(categorical), cfg.output_column)
 
 
-def align_columns(df: pd.DataFrame, cfg: DataConfig) -> pd.DataFrame:
+def align_columns(df: pd.DataFrame, cfg: ColumnConfig) -> pd.DataFrame:
     """Return a copy holding exactly the configured columns, in configured order.
 
     Missing inputs raise SchemaError under `strict_schema`, else are filled with 0.0.
@@ -101,7 +101,7 @@ def _new_onehot() -> OneHotEncoder:
 class Preprocessor:
     """Fits scalers/encoders once, then transforms every later frame identically."""
 
-    def __init__(self, cfg: DataConfig, *, use_onehot: bool = True) -> None:
+    def __init__(self, cfg: ColumnConfig, *, use_onehot: bool = True) -> None:
         self._cfg = cfg
         self._use_onehot = use_onehot
         self._scaler = StandardScaler()
@@ -222,7 +222,7 @@ class Preprocessor:
     @classmethod
     def restore(
         cls,
-        cfg: DataConfig,
+        cfg: ColumnConfig,
         state: FittedState,
         schema: FeatureSchema,
         feature_names: tuple[str, ...],

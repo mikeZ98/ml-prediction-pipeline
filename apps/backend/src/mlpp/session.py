@@ -20,7 +20,7 @@ from typing import Any, Final
 
 import joblib
 
-from mlpp.config import DataConfig
+from mlpp.config import ColumnConfig
 from mlpp.errors import ArtifactError, SchemaVersionError
 from mlpp.preprocess import FeatureSchema, FittedState, Preprocessor
 
@@ -307,7 +307,7 @@ class LoadedSession:
     preprocessor: Preprocessor
 
 
-def load_session(session_dir: Path, cfg: DataConfig, *, use_onehot: bool = True) -> LoadedSession:
+def load_session(session_dir: Path, cfg: ColumnConfig, *, use_onehot: bool = True) -> LoadedSession:
     """Restore a session's manifest and a working Preprocessor from `session_dir`.
 
     Validates that every file the manifest lists is actually present — the

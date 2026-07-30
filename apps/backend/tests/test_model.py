@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mlpp.config import DataConfig, TrainConfig
+from mlpp.config import ColumnConfig, TrainConfig
 from mlpp.preprocess import Preprocessor
 
 pytestmark = pytest.mark.slow
@@ -35,11 +35,13 @@ def test_model_compiles_for_each_loss(loss: str) -> None:
     assert model.loss is not None
 
 
-def test_set_seed_makes_training_reproducible(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
+def test_set_seed_makes_training_reproducible(
+    frame: pd.DataFrame, column_cfg: ColumnConfig
+) -> None:
     from mlpp.model import build_model
     from mlpp.training import set_seed
 
-    x, y = Preprocessor(data_cfg).fit_transform(frame)
+    x, y = Preprocessor(column_cfg).fit_transform(frame)
     weights = []
     for _ in range(2):
         set_seed(7)
@@ -50,21 +52,21 @@ def test_set_seed_makes_training_reproducible(frame: pd.DataFrame, data_cfg: Dat
 
 
 def test_active_sample_weights_are_disabled_by_default(
-    frame: pd.DataFrame, data_cfg: DataConfig
+    frame: pd.DataFrame, column_cfg: ColumnConfig
 ) -> None:
     from mlpp.training import active_sample_weights
 
-    pre = Preprocessor(data_cfg).fit(frame)
+    pre = Preprocessor(column_cfg).fit(frame)
     x, _ = pre.transform(frame)
     assert active_sample_weights(x, pre, TrainConfig()) is None
 
 
 def test_active_sample_weights_track_the_right_column(
-    frame: pd.DataFrame, data_cfg: DataConfig
+    frame: pd.DataFrame, column_cfg: ColumnConfig
 ) -> None:
     from mlpp.training import active_sample_weights
 
-    pre = Preprocessor(data_cfg).fit(frame)
+    pre = Preprocessor(column_cfg).fit(frame)
     x, _ = pre.transform(frame)
     weights = active_sample_weights(x, pre, TrainConfig(active_weight_alpha=0.5))
 
@@ -74,35 +76,35 @@ def test_active_sample_weights_track_the_right_column(
 
 
 def test_active_sample_weights_none_when_column_absent(
-    frame: pd.DataFrame, data_cfg: DataConfig
+    frame: pd.DataFrame, column_cfg: ColumnConfig
 ) -> None:
     from mlpp.training import active_sample_weights
 
-    pre = Preprocessor(data_cfg).fit(frame)
+    pre = Preprocessor(column_cfg).fit(frame)
     x, _ = pre.transform(frame)
     cfg = TrainConfig(active_weight_alpha=0.5, active_column="does_not_exist")
     assert active_sample_weights(x, pre, cfg) is None
 
 
 def test_train_rejects_mismatched_lengths(
-    frame: pd.DataFrame, data_cfg: DataConfig, tmp_path
+    frame: pd.DataFrame, column_cfg: ColumnConfig, tmp_path
 ) -> None:
     from mlpp.model import build_model
     from mlpp.training import train
 
-    x, y = Preprocessor(data_cfg).fit_transform(frame)
+    x, y = Preprocessor(column_cfg).fit_transform(frame)
     model = build_model(x.shape[1], TrainConfig())
     with pytest.raises(ValueError, match="rows but y has"):
         train(model, x, y[:-1], tmp_path, TrainConfig(epochs=1), verbose=0)
 
 
 def test_train_writes_checkpoint_and_log(
-    frame: pd.DataFrame, data_cfg: DataConfig, tmp_path
+    frame: pd.DataFrame, column_cfg: ColumnConfig, tmp_path
 ) -> None:
     from mlpp.model import build_model
     from mlpp.training import BEST_MODEL_FILE, TRAINING_LOG_FILE, train
 
-    x, y = Preprocessor(data_cfg).fit_transform(frame)
+    x, y = Preprocessor(column_cfg).fit_transform(frame)
     cfg = TrainConfig(epochs=1, batch_size=16, validation_split=0.2)
     model = build_model(x.shape[1], cfg)
     history = train(model, x, y, tmp_path, cfg, verbose=0)

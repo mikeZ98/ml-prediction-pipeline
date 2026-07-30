@@ -82,7 +82,7 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
     session_dir = writer.session_dir
     log.info("session directory: %s", session_dir)
 
-    pre = Preprocessor(cfg.data, use_onehot=cfg.train.use_onehot)
+    pre = Preprocessor(cfg.data.columns, use_onehot=cfg.train.use_onehot)
     model = None
     rows: list[EvaluationRow] = []
 
@@ -94,7 +94,9 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
             writer.set_features(_contract_from(pre))
         x_train, y_train = pre.transform(frame)
         if y_train is None:
-            log.warning("skipping %s: no %r column", train_path.name, cfg.data.output_column)
+            log.warning(
+                "skipping %s: no %r column", train_path.name, cfg.data.columns.output_column
+            )
             continue
 
         if model is None:
@@ -194,7 +196,7 @@ def _evaluate(
             continue
         x_test, y_test = pre.transform(frame)
         if y_test is None:
-            log.warning("skipping %s: no %r column", test_path.name, cfg.data.output_column)
+            log.warning("skipping %s: no %r column", test_path.name, cfg.data.columns.output_column)
             continue
 
         y_pred = pre.inverse_target(model.predict(x_test, verbose=0))

@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mlpp.config import DataConfig
+from mlpp.config import ColumnConfig, DataConfig
 from mlpp.errors import ArtifactError, SchemaVersionError
 from mlpp.preprocess import Preprocessor
 from mlpp.session import (
@@ -314,7 +314,7 @@ def test_writer_reopens_an_existing_directory(tmp_path: Path) -> None:
 
 def test_fitted_state_round_trip(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
     """Persisted estimators must reproduce the original transform exactly."""
-    pre = Preprocessor(data_cfg).fit(frame)
+    pre = Preprocessor(data_cfg.columns).fit(frame)
     writer = SessionWriter(data_cfg.output_dir / "session")
     writer.set_features(
         FeatureContract(
@@ -325,7 +325,7 @@ def test_fitted_state_round_trip(frame: pd.DataFrame, data_cfg: DataConfig) -> N
     writer.flush()
 
     restored = Preprocessor.restore(
-        data_cfg, read_fitted_state(writer.session_dir), pre.schema, pre.feature_names
+        data_cfg.columns, read_fitted_state(writer.session_dir), pre.schema, pre.feature_names
     )
     np.testing.assert_allclose(restored.transform(frame)[0], pre.transform(frame)[0])
 
@@ -333,7 +333,7 @@ def test_fitted_state_round_trip(frame: pd.DataFrame, data_cfg: DataConfig) -> N
 def test_write_fitted_state_registers_all_three_files(
     frame: pd.DataFrame, data_cfg: DataConfig
 ) -> None:
-    pre = Preprocessor(data_cfg).fit(frame)
+    pre = Preprocessor(data_cfg.columns).fit(frame)
     writer = SessionWriter(data_cfg.output_dir / "session")
     write_fitted_state(writer, pre.fitted_state)
     roles = {a.role for a in writer._artifacts}  # noqa: SLF001 - inventory is the assertion
@@ -344,7 +344,7 @@ def test_write_fitted_state_registers_all_three_files(
 
 def test_encoders_file_holds_only_the_encoder(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
     """Previously this bundled schema + feature_names — one of the three copies."""
-    pre = Preprocessor(data_cfg).fit(frame)
+    pre = Preprocessor(data_cfg.columns).fit(frame)
     writer = SessionWriter(data_cfg.output_dir / "session")
     write_fitted_state(writer, pre.fitted_state)
     blob = joblib.load(writer.session_dir / ENCODERS_FILE)
@@ -363,7 +363,7 @@ def test_read_fitted_state_reports_every_missing_file(tmp_path: Path) -> None:
 def test_read_fitted_state_reports_a_partial_session(
     frame: pd.DataFrame, data_cfg: DataConfig
 ) -> None:
-    pre = Preprocessor(data_cfg).fit(frame)
+    pre = Preprocessor(data_cfg.columns).fit(frame)
     writer = SessionWriter(data_cfg.output_dir / "session")
     write_fitted_state(writer, pre.fitted_state)
     (writer.session_dir / ENCODERS_FILE).unlink()
@@ -375,7 +375,7 @@ def test_read_fitted_state_reports_a_partial_session(
 
 
 def _write_session(frame: pd.DataFrame, data_cfg: DataConfig) -> tuple[SessionWriter, Preprocessor]:
-    pre = Preprocessor(data_cfg).fit(frame)
+    pre = Preprocessor(data_cfg.columns).fit(frame)
     writer = SessionWriter(data_cfg.output_dir / "session")
     writer.set_features(
         FeatureContract(
@@ -392,7 +392,7 @@ def test_load_session_round_trip_is_numerically_identical(
 ) -> None:
     """The assertion whose absence let the committed reference run rot unnoticed."""
     writer, pre = _write_session(frame, data_cfg)
-    loaded = load_session(writer.session_dir, data_cfg)
+    loaded = load_session(writer.session_dir, data_cfg.columns)
 
     x_before, y_before = pre.transform(frame)
     x_after, y_after = loaded.preprocessor.transform(frame)
@@ -405,7 +405,7 @@ def test_load_session_restores_the_feature_contract(
     frame: pd.DataFrame, data_cfg: DataConfig
 ) -> None:
     writer, pre = _write_session(frame, data_cfg)
-    loaded = load_session(writer.session_dir, data_cfg)
+    loaded = load_session(writer.session_dir, data_cfg.columns)
     assert loaded.preprocessor.feature_names == pre.feature_names
     assert loaded.preprocessor.n_features == pre.n_features
     assert loaded.preprocessor.schema == pre.schema
@@ -414,7 +414,7 @@ def test_load_session_restores_the_feature_contract(
 
 def test_load_session_inverse_target_round_trips(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
     writer, _ = _write_session(frame, data_cfg)
-    loaded = load_session(writer.session_dir, data_cfg)
+    loaded = load_session(writer.session_dir, data_cfg.columns)
     _, y = loaded.preprocessor.transform(frame)
     assert y is not None
     np.testing.assert_allclose(
@@ -429,8 +429,31 @@ def test_load_session_rejects_a_listed_but_missing_file(
     writer, _ = _write_session(frame, data_cfg)
     (writer.session_dir / SCALER_FILE).unlink()
     with pytest.raises(ArtifactError, match="not on disk") as exc:
-        load_session(writer.session_dir, data_cfg)
+        load_session(writer.session_dir, data_cfg.columns)
     assert SCALER_FILE in str(exc.value)
+
+
+def test_load_session_needs_only_the_manifests_own_column_contract(
+    frame: pd.DataFrame, data_cfg: DataConfig
+) -> None:
+    """A reader must not have to know where the training data lived.
+
+    The contract is rebuilt from the manifest alone — no directories, no access to
+    the config that trained the session. This is the property the predict path
+    rests on, so it is asserted directly rather than inferred.
+    """
+    writer, pre = _write_session(frame, data_cfg)
+    manifest = read_manifest(writer.session_dir)
+
+    from_manifest = ColumnConfig(
+        input_columns=manifest.features.numeric_columns + manifest.features.categorical_columns,
+        output_column=manifest.features.output_column,
+        categorical_columns=manifest.features.categorical_columns,
+    )
+    loaded = load_session(writer.session_dir, from_manifest)
+
+    assert loaded.preprocessor.feature_names == pre.feature_names
+    np.testing.assert_allclose(loaded.preprocessor.transform(frame)[0], pre.transform(frame)[0])
 
 
 def test_load_session_rejects_a_pre_manifest_directory(tmp_path: Path) -> None:
@@ -438,7 +461,7 @@ def test_load_session_rejects_a_pre_manifest_directory(tmp_path: Path) -> None:
     legacy.mkdir()
     (legacy / "feature_config.json").write_text('{"input_columns": []}', encoding="utf-8")
     with pytest.raises(SchemaVersionError, match="predates the manifest contract"):
-        load_session(legacy, DataConfig(tmp_path, tmp_path, tmp_path))
+        load_session(legacy, ColumnConfig())
 
 
 def test_load_session_does_not_import_tensorflow(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
@@ -452,15 +475,12 @@ def test_load_session_does_not_import_tensorflow(frame: pd.DataFrame, data_cfg: 
     program = textwrap.dedent(f"""
         import sys
         from pathlib import Path
-        from mlpp.config import DataConfig
+        from mlpp.config import ColumnConfig
         from mlpp.session import load_session
 
-        cfg = DataConfig(
-            train_dir=Path({str(data_cfg.train_dir)!r}),
-            test_dir=Path({str(data_cfg.test_dir)!r}),
-            output_dir=Path({str(data_cfg.output_dir)!r}),
-            input_columns={data_cfg.input_columns!r},
-            output_column={data_cfg.output_column!r},
+        cfg = ColumnConfig(
+            input_columns={data_cfg.columns.input_columns!r},
+            output_column={data_cfg.columns.output_column!r},
         )
         loaded = load_session(Path({str(writer.session_dir)!r}), cfg)
         assert loaded.preprocessor.n_features > 0
