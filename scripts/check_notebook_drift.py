@@ -33,6 +33,13 @@ REGENERATE_HINT = "uv run --project apps/backend python scripts/build_notebook.p
 #: design — they are products of execution, not of the generator.
 COMPARED_CELL_KEYS = ("cell_type", "id", "source")
 
+#: Notebook-level metadata keys the generator owns and that must therefore match.
+#: `language_info` is deliberately absent: the kernel rewrites it during execution
+#: with the interpreter that actually ran (full version, mimetype, lexer…), so it
+#: is an execution artifact in exactly the way `outputs` is. `kernelspec` is a
+#: generator-authored choice and is compared.
+COMPARED_METADATA_KEYS = ("kernelspec",)
+
 
 def _cell_fingerprint(cell: dict[str, Any]) -> dict[str, Any]:
     return {key: cell.get(key) for key in COMPARED_CELL_KEYS}
@@ -55,7 +62,11 @@ def _differences(expected: dict[str, Any], committed: dict[str, Any]) -> list[st
                 if exp_fp[key] != got_fp[key]:
                     problems.append(f"cell {index}: {key} differs from the generator")
 
-    for key in ("metadata", "nbformat", "nbformat_minor"):
+    for key in COMPARED_METADATA_KEYS:
+        if expected["metadata"].get(key) != committed.get("metadata", {}).get(key):
+            problems.append(f"notebook metadata.{key} differs from the generator")
+
+    for key in ("nbformat", "nbformat_minor"):
         if expected[key] != committed.get(key):
             problems.append(f"notebook {key} differs from the generator")
 

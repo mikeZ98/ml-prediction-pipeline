@@ -106,13 +106,17 @@ Then open the notebook and pick the `mlpp` kernel. All logic lives in the `mlpp`
 cells only call into tested code. It is generated:
 
 ```bash
+# regenerate the cells only — leaves the notebook output-free
 uv run --project apps/backend python scripts/build_notebook.py
+
+# regenerate AND execute, storing outputs — this is what gets committed
+uv run --project apps/backend python scripts/build_notebook.py --execute
 ```
 
-> **Regenerating strips the committed outputs.** `build_notebook.py` emits an output-free
-> notebook, so if you regenerate and want the report to keep rendering on GitHub, re-execute
-> it before committing. CI compares cell *source* only, so outputs never fail the gate —
-> which is also why nothing will warn you if you commit it output-stripped.
+> **Use `--execute` when committing.** Plain regeneration emits an output-free notebook, so
+> committing that would leave the report blank on GitHub. CI compares cell *source* only, so
+> outputs never fail the drift gate — which also means nothing warns you if you commit it
+> output-stripped. `--execute` is the one command that produces the committed artifact.
 
 ---
 

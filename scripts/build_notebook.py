@@ -210,7 +210,41 @@ def build() -> dict[str, object]:
     }
 
 
+def execute_in_place() -> int:
+    """Run every cell and write the outputs back into the notebook.
+
+    The committed notebook carries outputs so it renders on GitHub without being
+    run, which means regenerating alone is not enough — this is the second half of
+    producing the committed artifact, and why `--execute` exists rather than a
+    two-step ritual nobody remembers.
+
+    Imports are local so the default path stays stdlib-only: CI regenerates and
+    drift-checks with `--no-project`, and must not need the notebook dep group.
+    Returns the number of cells that ended up carrying outputs.
+    """
+    import nbformat
+    from nbclient import NotebookClient
+
+    notebook = nbformat.read(NOTEBOOK, as_version=4)
+    # The committed kernelspec names `mlpp`, which exists only after a human runs
+    # `ipykernel install --name mlpp`. Override so this works on a bare checkout.
+    NotebookClient(
+        notebook,
+        timeout=900,
+        kernel_name="python3",
+        resources={"metadata": {"path": str(REPO_ROOT)}},
+    ).execute()
+    nbformat.write(notebook, NOTEBOOK)
+    return sum(1 for cell in notebook.cells if cell.get("outputs"))
+
+
 if __name__ == "__main__":
+    import sys
+
     NOTEBOOK.parent.mkdir(parents=True, exist_ok=True)
     NOTEBOOK.write_text(json.dumps(build(), indent=1) + "\n", encoding="utf-8")
     print(f"wrote {NOTEBOOK.relative_to(REPO_ROOT)}")
+
+    if "--execute" in sys.argv[1:]:
+        count = execute_in_place()
+        print(f"executed in place — {count} cell(s) now carry outputs")
