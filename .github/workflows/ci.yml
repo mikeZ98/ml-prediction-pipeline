@@ -42,9 +42,10 @@ jobs:
 
       - name: Sync dependencies
         # --locked fails if uv.lock is stale vs pyproject.toml, rather than
-        # silently re-resolving. Plain sync includes the dev group and skips
-        # the notebook group.
-        run: uv sync --locked
+        # silently re-resolving. The notebook group is required: tests/test_notebook.py
+        # executes the committed notebook via nbclient, and skipping that gate in CI
+        # would recreate the blind spot where a broken notebook reached main unnoticed.
+        run: uv sync --locked --group notebook
 
       - name: Lint
         run: uv run --no-sync ruff check --output-format=github .
@@ -76,16 +77,10 @@ jobs:
           enable-cache: true
           cache-dependency-glob: apps/backend/uv.lock
 
-      - name: Regenerate the notebook
+      - name: Check the notebook source matches its generator
         # notebooks/01_train.ipynb is generated; it must never be hand-edited.
+        # Compares cell type/id/source and notebook metadata, ignoring `outputs`
+        # and `execution_count` so the committed notebook can carry executed
+        # results while its code still comes from scripts/build_notebook.py.
         # Only stdlib is used, so no project sync is needed.
-        run: uv run --no-project --python 3.12 python scripts/build_notebook.py
-
-      - name: Fail if it drifted
-        run: |
-          if ! git diff --quiet -- notebooks/01_train.ipynb; then
-            echo "::error file=notebooks/01_train.ipynb::Notebook is out of sync with scripts/build_notebook.py. Regenerate it with: uv run --project apps/backend python scripts/build_notebook.py"
-            git diff -- notebooks/01_train.ipynb
-            exit 1
-          fi
-          echo "notebook is in sync"
+        run: uv run --no-project --python 3.12 python scripts/check_notebook_drift.py
