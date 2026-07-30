@@ -468,18 +468,18 @@ constructing it positionally, which within this repo is only tests and `cli.py`.
 
 #### Automated
 
-- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 3.2 New CLI tests pass: `uv run pytest tests/test_predict_cli.py -v`
-- [x] 3.3 The entry point resolves: `uv run mlpp-predict --help`
-- [x] 3.4 End-to-end scoring works against `OUTPUTS/example/` with `--output`
-- [x] 3.5 Type checking passes: `uv run mypy src/mlpp`
-- [x] 3.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 3.7 No stale `artifacts` module reference remains in `CLAUDE.md` or `src/mlpp/__init__.py`
-- [ ] 3.8 CI passes on the branch (both Python versions plus notebook-drift)
+- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest` — 0ff9a9c
+- [x] 3.2 New CLI tests pass: `uv run pytest tests/test_predict_cli.py -v` — 0ff9a9c
+- [x] 3.3 The entry point resolves: `uv run mlpp-predict --help` — 0ff9a9c
+- [x] 3.4 End-to-end scoring works against `OUTPUTS/example/` with `--output` — 0ff9a9c
+- [x] 3.5 Type checking passes: `uv run mypy src/mlpp` — 0ff9a9c
+- [x] 3.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — 0ff9a9c
+- [x] 3.7 No stale `artifacts` module reference remains in `CLAUDE.md` or `src/mlpp/__init__.py` — 0ff9a9c
+- [x] 3.8 CI passes on the branch (both Python versions plus notebook-drift) — 0ff9a9c
 
 #### Manual
 
-- [x] 3.9 `--help` output is usable without reading the source
-- [x] 3.10 The output CSV opens cleanly and its columns are self-explanatory
-- [x] 3.11 `README.md`'s inference section is accurate about the TensorFlow requirement
-- [x] 3.12 A reader following `README.md` alone can score the committed example run
+- [x] 3.9 `--help` output is usable without reading the source — 0ff9a9c
+- [x] 3.10 The output CSV opens cleanly and its columns are self-explanatory — 0ff9a9c
+- [x] 3.11 `README.md`'s inference section is accurate about the TensorFlow requirement — 0ff9a9c
+- [x] 3.12 A reader following `README.md` alone can score the committed example run — 0ff9a9c
