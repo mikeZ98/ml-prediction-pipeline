@@ -135,6 +135,29 @@ class Preprocessor:
     def n_features(self) -> int:
         return len(self.feature_names)
 
+    @property
+    def fitted_categories(self) -> dict[str, tuple[object, ...]]:
+        """Levels the encoder actually saw, per categorical column.
+
+        The encoder is built with `handle_unknown="ignore"`, so a level absent from
+        these tuples is silently encoded as all-zeros rather than rejected. That is
+        harmless while fitting but a silent wrong answer at inference time, so a
+        caller scoring new data needs to be able to compare against what was seen.
+
+        Empty when categoricals are not one-hot encoded — there is nothing fitted
+        to compare against in that case.
+        """
+        if self._schema is None:
+            raise NotFittedError("Preprocessor.fit has not been called")
+        if not self._encode_categoricals(self._schema):
+            return {}
+        return {
+            column: tuple(levels)
+            for column, levels in zip(
+                self._schema.categorical, self._onehot.categories_, strict=True
+            )
+        }
+
     def index_of(self, column: str) -> int:
         """Position of `column` on axis 1 of X. Raises KeyError if it is not a feature."""
         try:

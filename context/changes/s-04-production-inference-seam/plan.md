@@ -433,36 +433,36 @@ constructing it positionally, which within this repo is only tests and `cli.py`.
 
 #### Automated
 
-- [x] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'`
-- [x] 1.2 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 1.3 Type checking passes: `uv run mypy src/mlpp`
-- [x] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 1.5 No TensorFlow import reaches `session`, `preprocess`, `config`, `data`, `metrics`
-- [x] 1.6 A real training run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet`
-- [x] 1.7 The committed reference run still loads via `load_session` against `OUTPUTS/example/`
+- [x] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'` — 4c2411a
+- [x] 1.2 Full suite passes: `cd apps/backend && uv run pytest` — 4c2411a
+- [x] 1.3 Type checking passes: `uv run mypy src/mlpp` — 4c2411a
+- [x] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — 4c2411a
+- [x] 1.5 No TensorFlow import reaches `session`, `preprocess`, `config`, `data`, `metrics` — 4c2411a
+- [x] 1.6 A real training run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet` — 4c2411a
+- [x] 1.7 The committed reference run still loads via `load_session` against `OUTPUTS/example/` — 4c2411a
 
 #### Manual
 
-- [x] 1.8 Only one spelling of the column fields is live — no duplicate access path left behind
-- [x] 1.9 `config.py` makes the "where data lives" vs "what the columns are" split obvious at a glance
+- [x] 1.8 Only one spelling of the column fields is live — no duplicate access path left behind — 4c2411a
+- [x] 1.9 `config.py` makes the "where data lives" vs "what the columns are" split obvious at a glance — 4c2411a
 
 ### Phase 2: Scoring core
 
 #### Automated
 
-- [ ] 2.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [ ] 2.2 New tests pass: `uv run pytest tests/test_predict.py -v`
-- [ ] 2.3 Fast suite is still TensorFlow-free and still fast: `uv run pytest -m 'not slow'`
-- [ ] 2.4 `predict.py` is the only new module importing TensorFlow/Keras
-- [ ] 2.5 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 2.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 2.7 Scoring `OUTPUTS/example/` against a `TEST/*.csv` produces one prediction per input row
+- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest`
+- [x] 2.2 New tests pass: `uv run pytest tests/test_predict.py -v`
+- [x] 2.3 Fast suite is still TensorFlow-free and still fast: `uv run pytest -m 'not slow'`
+- [x] 2.4 `predict.py` is the only new module importing TensorFlow/Keras
+- [x] 2.5 Type checking passes: `uv run mypy src/mlpp`
+- [x] 2.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 2.7 Scoring `OUTPUTS/example/` against a `TEST/*.csv` produces one prediction per input row
 
 #### Manual
 
-- [ ] 2.8 Predicted values fall in a plausible range for the target column (not centred on zero)
-- [ ] 2.9 The unseen-level report reads clearly enough for an operator to act on it
-- [ ] 2.10 No filename literal for the model appears outside `session.py`
+- [x] 2.8 Predicted values fall in a plausible range for the target column (not centred on zero)
+- [x] 2.9 The unseen-level report reads clearly enough for an operator to act on it
+- [x] 2.10 No filename literal for the model appears outside `session.py`
 
 ### Phase 3: mlpp-predict CLI and doc truth-up
 
