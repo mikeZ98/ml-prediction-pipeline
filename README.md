@@ -6,7 +6,8 @@ End-to-end pipeline for **time-series / tabular regression**:
 - **Preprocessing**: `StandardScaler` for inputs and target, optional one-hot for categoricals
 - **Artifacts**: model (`.keras`), scalers/encoders (`.gz`), and a versioned `manifest.json`
 - **Evaluation**: MSE/RMSE/MAE/R², learning curves, interactive HTML diff plots
-- **Interfaces**: a `mlpp-train` CLI *and* a thin notebook driver over the same tested package
+- **Interfaces**: `mlpp-train` and `mlpp-predict` CLIs *and* a thin notebook driver over the same
+  tested package
 
 ---
 
@@ -53,6 +54,37 @@ uv run mlpp-train --help     # every knob: columns, loss, seed, batch size, plot
 ```
 
 Artifacts land in a timestamped folder under `OUTPUTS/`.
+
+### Scoring a new CSV
+
+Once a session exists, score fresh data against it with `mlpp-predict`. The column
+contract is read from the session's own `manifest.json`, so you only supply the
+session directory and an input file:
+
+```bash
+uv run mlpp-predict \
+  --session ../../OUTPUTS/example \
+  --input ../../TEST/sample_test_A.csv \
+  --output /tmp/preds.csv
+
+uv run mlpp-predict --help   # --keep-inputs, --lenient-schema, --quiet
+```
+
+Predictions come back in the target's original units and are written to the path
+you name — never into the session directory, which stays a reproducible training
+artifact. A target column in the input is optional and ignored if present.
+
+Two things worth knowing:
+
+- **Inference requires TensorFlow.** Loading a `.keras` model needs the full stack,
+  so this is not a lightweight install. Only *inspecting* a session is cheap:
+  `load_session()` validates the manifest and restores the preprocessor without
+  importing Keras at all.
+- **Unseen categorical levels warn rather than fail.** A category absent from
+  training is encoded as all-zeros (the encoder is built with
+  `handle_unknown="ignore"`), which still yields a number. The command reports the
+  affected columns and row count on stderr and exits `0`, so one stray value cannot
+  kill a batch — but you should treat those rows as suspect.
 
 ### Notebook
 
@@ -146,7 +178,7 @@ is what keeps the fast suite fast — and is why reading a saved session never n
 
 ## 🗺️ Roadmap
 
-- [ ] `mlpp-predict` CLI: load a session directory, score a new CSV
+- [x] `mlpp-predict` CLI: load a session directory, score a new CSV
 - [x] GitHub Actions: lint, types and tests on push
 - [ ] MLflow experiment tracking (optional)
 

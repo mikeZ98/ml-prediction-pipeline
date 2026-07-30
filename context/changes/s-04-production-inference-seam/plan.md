@@ -450,36 +450,36 @@ constructing it positionally, which within this repo is only tests and `cli.py`.
 
 #### Automated
 
-- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 2.2 New tests pass: `uv run pytest tests/test_predict.py -v`
-- [x] 2.3 Fast suite is still TensorFlow-free and still fast: `uv run pytest -m 'not slow'`
-- [x] 2.4 `predict.py` is the only new module importing TensorFlow/Keras
-- [x] 2.5 Type checking passes: `uv run mypy src/mlpp`
-- [x] 2.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 2.7 Scoring `OUTPUTS/example/` against a `TEST/*.csv` produces one prediction per input row
+- [x] 2.1 Full suite passes: `cd apps/backend && uv run pytest` — fa62bd7
+- [x] 2.2 New tests pass: `uv run pytest tests/test_predict.py -v` — fa62bd7
+- [x] 2.3 Fast suite is still TensorFlow-free and still fast: `uv run pytest -m 'not slow'` — fa62bd7
+- [x] 2.4 `predict.py` is the only new module importing TensorFlow/Keras — fa62bd7
+- [x] 2.5 Type checking passes: `uv run mypy src/mlpp` — fa62bd7
+- [x] 2.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — fa62bd7
+- [x] 2.7 Scoring `OUTPUTS/example/` against a `TEST/*.csv` produces one prediction per input row — fa62bd7
 
 #### Manual
 
-- [x] 2.8 Predicted values fall in a plausible range for the target column (not centred on zero)
-- [x] 2.9 The unseen-level report reads clearly enough for an operator to act on it
-- [x] 2.10 No filename literal for the model appears outside `session.py`
+- [x] 2.8 Predicted values fall in a plausible range for the target column (not centred on zero) — fa62bd7
+- [x] 2.9 The unseen-level report reads clearly enough for an operator to act on it — fa62bd7
+- [x] 2.10 No filename literal for the model appears outside `session.py` — fa62bd7
 
 ### Phase 3: mlpp-predict CLI and doc truth-up
 
 #### Automated
 
-- [ ] 3.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [ ] 3.2 New CLI tests pass: `uv run pytest tests/test_predict_cli.py -v`
-- [ ] 3.3 The entry point resolves: `uv run mlpp-predict --help`
-- [ ] 3.4 End-to-end scoring works against `OUTPUTS/example/` with `--output`
-- [ ] 3.5 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 3.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 3.7 No stale `artifacts` module reference remains in `CLAUDE.md` or `src/mlpp/__init__.py`
+- [x] 3.1 Full suite passes: `cd apps/backend && uv run pytest`
+- [x] 3.2 New CLI tests pass: `uv run pytest tests/test_predict_cli.py -v`
+- [x] 3.3 The entry point resolves: `uv run mlpp-predict --help`
+- [x] 3.4 End-to-end scoring works against `OUTPUTS/example/` with `--output`
+- [x] 3.5 Type checking passes: `uv run mypy src/mlpp`
+- [x] 3.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 3.7 No stale `artifacts` module reference remains in `CLAUDE.md` or `src/mlpp/__init__.py`
 - [ ] 3.8 CI passes on the branch (both Python versions plus notebook-drift)
 
 #### Manual
 
-- [ ] 3.9 `--help` output is usable without reading the source
-- [ ] 3.10 The output CSV opens cleanly and its columns are self-explanatory
-- [ ] 3.11 `README.md`'s inference section is accurate about the TensorFlow requirement
-- [ ] 3.12 A reader following `README.md` alone can score the committed example run
+- [x] 3.9 `--help` output is usable without reading the source
+- [x] 3.10 The output CSV opens cleanly and its columns are self-explanatory
+- [x] 3.11 `README.md`'s inference section is accurate about the TensorFlow requirement
+- [x] 3.12 A reader following `README.md` alone can score the committed example run

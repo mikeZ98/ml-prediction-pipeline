@@ -17,6 +17,7 @@ dependencies = [
 
 [project.scripts]
 mlpp-train = "mlpp.cli:main"
+mlpp-predict = "mlpp.predict_cli:main"
 
 [dependency-groups]
 dev = [

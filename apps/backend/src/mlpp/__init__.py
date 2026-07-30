@@ -1,8 +1,9 @@
 """mlpp — time-series / tabular regression pipeline.
 
-Import layers deliberately: `config`, `data`, `preprocess`, `metrics` and
-`artifacts` are TensorFlow-free and cheap to import. `model`, `training`,
-`plots` and `pipeline` pull in the heavy stack, so import them only when needed.
+Import layers deliberately: `config`, `data`, `preprocess`, `metrics`, `session`
+and `errors` are TensorFlow-free and cheap to import. `model`, `training`,
+`plots`, `pipeline` and `predict` pull in the heavy stack, so import them only
+when needed.
 """
 
 from mlpp.errors import (
