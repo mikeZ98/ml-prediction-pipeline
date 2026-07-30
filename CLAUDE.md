@@ -31,6 +31,10 @@ uv sync --all-groups                 # runtime + dev + notebook groups
 uv run mlpp-train --epochs 5         # train + evaluate; --help lists every knob
 uv run mlpp-train --no-plots --quiet # CI-friendly run
 ./scripts/quickstart.sh              # (from repo root) sync + train in one step
+
+# score a new CSV against a trained session (needs TensorFlow — it loads the model)
+uv run mlpp-predict --session ../../OUTPUTS/example --input ../../TEST/sample_test_A.csv \
+  --output /tmp/preds.csv
 ```
 
 Notebook: `uv run python -m ipykernel install --user --name mlpp`, then open
@@ -48,8 +52,10 @@ uv run mypy src/mlpp          # strict; must stay clean
 ```
 
 Tests touching Keras/TF are marked `@pytest.mark.slow`. Keep `config`, `data`, `preprocess`,
-`metrics` and `artifacts` **free of TensorFlow imports** — that separation is what keeps the fast
-suite fast. Run tests before declaring done.
+`metrics`, `session` and `errors` **free of TensorFlow imports** — that separation is what keeps
+the fast suite fast, and it is what lets `load_session` validate a session without the training
+stack. `model`, `training`, `plots`, `pipeline` and `predict` own the heavy imports. Run tests
+before declaring done.
 
 ## Domain invariants
 - **Fit once.** `Preprocessor.fit` runs on the first TRAIN file only; every later file and all TEST
