@@ -1,7 +1,7 @@
 ---
 change_id: s-04-production-inference-seam
 title: Select the next epic — inference seam vs. new architectures vs. dashboard
-status: preparing
+status: planned
 created: 2026-07-30
 updated: 2026-07-30
 archived_at: null
