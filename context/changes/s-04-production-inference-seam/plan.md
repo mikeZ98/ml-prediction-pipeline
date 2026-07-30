@@ -433,18 +433,18 @@ constructing it positionally, which within this repo is only tests and `cli.py`.
 
 #### Automated
 
-- [ ] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'`
-- [ ] 1.2 Full suite passes: `cd apps/backend && uv run pytest`
-- [ ] 1.3 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 1.5 No TensorFlow import reaches `session`, `preprocess`, `config`, `data`, `metrics`
-- [ ] 1.6 A real training run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet`
-- [ ] 1.7 The committed reference run still loads via `load_session` against `OUTPUTS/example/`
+- [x] 1.1 Fast suite passes: `cd apps/backend && uv run pytest -m 'not slow'`
+- [x] 1.2 Full suite passes: `cd apps/backend && uv run pytest`
+- [x] 1.3 Type checking passes: `uv run mypy src/mlpp`
+- [x] 1.4 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 1.5 No TensorFlow import reaches `session`, `preprocess`, `config`, `data`, `metrics`
+- [x] 1.6 A real training run still completes: `uv run mlpp-train --epochs 1 --no-plots --quiet`
+- [x] 1.7 The committed reference run still loads via `load_session` against `OUTPUTS/example/`
 
 #### Manual
 
-- [ ] 1.8 Only one spelling of the column fields is live — no duplicate access path left behind
-- [ ] 1.9 `config.py` makes the "where data lives" vs "what the columns are" split obvious at a glance
+- [x] 1.8 Only one spelling of the column fields is live — no duplicate access path left behind
+- [x] 1.9 `config.py` makes the "where data lives" vs "what the columns are" split obvious at a glance
 
 ### Phase 2: Scoring core
 

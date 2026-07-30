@@ -65,7 +65,7 @@ def test_manifest_records_the_feature_contract_once(pipeline_cfg: PipelineConfig
 
     result = run_pipeline(pipeline_cfg, verbose=0)
     features = read_manifest(result.session_dir).features
-    assert features.output_column == pipeline_cfg.data.output_column
+    assert features.output_column == pipeline_cfg.data.columns.output_column
     assert features.feature_names, "feature names must be recorded"
 
 
@@ -75,7 +75,7 @@ def test_real_session_round_trips_through_load_session(pipeline_cfg: PipelineCon
     from mlpp.session import load_session
 
     result = run_pipeline(pipeline_cfg, verbose=0)
-    loaded = load_session(result.session_dir, pipeline_cfg.data)
+    loaded = load_session(result.session_dir, pipeline_cfg.data.columns)
 
     assert loaded.manifest.features.feature_names
     assert loaded.preprocessor.n_features == len(loaded.manifest.features.feature_names)
@@ -176,9 +176,9 @@ def test_cli_runs_end_to_end(pipeline_cfg: PipelineConfig, tmp_path: Path) -> No
             "--output-dir",
             str(pipeline_cfg.data.output_dir),
             "--input-columns",
-            *pipeline_cfg.data.input_columns,
+            *pipeline_cfg.data.columns.input_columns,
             "--output-column",
-            pipeline_cfg.data.output_column,
+            pipeline_cfg.data.columns.output_column,
             "--epochs",
             "1",
             "--batch-size",

@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mlpp.config import DataConfig, EvalConfig, PipelineConfig, TrainConfig
+from mlpp.config import ColumnConfig, DataConfig, EvalConfig, PipelineConfig, TrainConfig
 
 INPUT_COLUMNS = ("feature_01", "feature_02", "comp_active")
 OUTPUT_COLUMN = "target"
@@ -34,15 +34,20 @@ def frame(rng: np.random.Generator) -> pd.DataFrame:
 
 
 @pytest.fixture
-def data_cfg(tmp_path: Path) -> DataConfig:
+def column_cfg() -> ColumnConfig:
+    """The column contract on its own — all a session reader needs."""
+    return ColumnConfig(input_columns=INPUT_COLUMNS, output_column=OUTPUT_COLUMN)
+
+
+@pytest.fixture
+def data_cfg(tmp_path: Path, column_cfg: ColumnConfig) -> DataConfig:
     for name in ("TRAIN", "TEST", "OUTPUTS"):
         (tmp_path / name).mkdir()
     return DataConfig(
         train_dir=tmp_path / "TRAIN",
         test_dir=tmp_path / "TEST",
         output_dir=tmp_path / "OUTPUTS",
-        input_columns=INPUT_COLUMNS,
-        output_column=OUTPUT_COLUMN,
+        columns=column_cfg,
     )
 
 

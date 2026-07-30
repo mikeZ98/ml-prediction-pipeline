@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from mlpp.config import DataConfig, EvalConfig, PipelineConfig, TrainConfig
+from mlpp.config import ColumnConfig, DataConfig, EvalConfig, PipelineConfig, TrainConfig
 
 
 def test_for_repo_derives_standard_directories(tmp_path: Path) -> None:
@@ -14,31 +14,30 @@ def test_for_repo_derives_standard_directories(tmp_path: Path) -> None:
     assert cfg.data.output_dir == tmp_path / "OUTPUTS"
 
 
-def test_config_is_immutable(data_cfg: DataConfig) -> None:
+def test_config_is_immutable(column_cfg: ColumnConfig) -> None:
     with pytest.raises(AttributeError):
-        data_cfg.output_column = "other"  # type: ignore[misc]
+        column_cfg.output_column = "other"  # type: ignore[misc]
 
 
-def test_categorical_columns_must_be_inputs(tmp_path: Path) -> None:
+def test_data_config_is_immutable(data_cfg: DataConfig) -> None:
+    with pytest.raises(AttributeError):
+        data_cfg.train_dir = Path("/elsewhere")  # type: ignore[misc]
+
+
+def test_data_config_defaults_its_column_contract(tmp_path: Path) -> None:
+    """`DataConfig` composes the column contract; omitting it yields the defaults."""
+    cfg = DataConfig(train_dir=tmp_path, test_dir=tmp_path, output_dir=tmp_path)
+    assert cfg.columns == ColumnConfig()
+
+
+def test_categorical_columns_must_be_inputs() -> None:
     with pytest.raises(ValueError, match="not present in input_columns"):
-        DataConfig(
-            train_dir=tmp_path,
-            test_dir=tmp_path,
-            output_dir=tmp_path,
-            input_columns=("a", "b"),
-            categorical_columns=("c",),
-        )
+        ColumnConfig(input_columns=("a", "b"), categorical_columns=("c",))
 
 
-def test_output_column_may_not_be_an_input(tmp_path: Path) -> None:
+def test_output_column_may_not_be_an_input() -> None:
     with pytest.raises(ValueError, match="must not also be an input column"):
-        DataConfig(
-            train_dir=tmp_path,
-            test_dir=tmp_path,
-            output_dir=tmp_path,
-            input_columns=("a", "target"),
-            output_column="target",
-        )
+        ColumnConfig(input_columns=("a", "target"), output_column="target")
 
 
 @pytest.mark.parametrize(
