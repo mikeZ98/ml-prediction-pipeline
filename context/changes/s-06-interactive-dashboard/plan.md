@@ -644,13 +644,13 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Automated
 
-- [x] 2.1 New data tests pass: `uv run pytest tests/test_data.py -v`
-- [x] 2.2 CLI tests pass: `uv run pytest tests/test_predict_cli.py -v`
-- [x] 2.3 Full suite passes: `uv run pytest`
-- [x] 2.4 Fast suite stays TensorFlow-free and ~1.5s: `uv run pytest -m 'not slow'`
-- [x] 2.5 Type checking passes: `uv run mypy src/mlpp`
-- [x] 2.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 2.7 Training path untouched: `read_csv_auto` still has exactly two call sites in `pipeline.py`
+- [x] 2.1 New data tests pass: `uv run pytest tests/test_data.py -v` — 0b87e6d
+- [x] 2.2 CLI tests pass: `uv run pytest tests/test_predict_cli.py -v` — 0b87e6d
+- [x] 2.3 Full suite passes: `uv run pytest` — 0b87e6d
+- [x] 2.4 Fast suite stays TensorFlow-free and ~1.5s: `uv run pytest -m 'not slow'` — 0b87e6d
+- [x] 2.5 Type checking passes: `uv run mypy src/mlpp` — 0b87e6d
+- [x] 2.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — 0b87e6d
+- [x] 2.7 Training path untouched: `read_csv_auto` still has exactly two call sites in `pipeline.py` — 0b87e6d
 
 #### Manual
 
@@ -661,13 +661,13 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Automated
 
-- [ ] 3.1 Importance tests pass: `uv run pytest tests/test_importance.py -v`
-- [ ] 3.2 Fast subset runs without TensorFlow: `uv run pytest tests/test_importance.py -m 'not slow'`
-- [ ] 3.3 Fast suite leaves `tensorflow` and `keras` absent from `sys.modules`
-- [ ] 3.4 Fast suite runtime has not materially regressed (baseline 1.56s)
-- [ ] 3.5 Full suite passes: `uv run pytest`
-- [ ] 3.6 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 3.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 3.1 Importance tests pass: `uv run pytest tests/test_importance.py -v`
+- [x] 3.2 Fast subset runs without TensorFlow: `uv run pytest tests/test_importance.py -m 'not slow'`
+- [x] 3.3 Fast suite leaves `tensorflow` and `keras` absent from `sys.modules`
+- [x] 3.4 Fast suite runtime has not materially regressed (baseline 1.56s)
+- [x] 3.5 Full suite passes: `uv run pytest`
+- [x] 3.6 Type checking passes: `uv run mypy src/mlpp`
+- [x] 3.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
 
 #### Manual
 
