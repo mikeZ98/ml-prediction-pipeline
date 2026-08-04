@@ -49,6 +49,80 @@ def test_end_to_end_writes_predictions(
     assert len(written) == len(frame)
 
 
+def test_end_to_end_scores_a_parquet_input(
+    pipeline_cfg: PipelineConfig, frame: pd.DataFrame, tmp_path: Path
+) -> None:
+    """Parquet is a package capability, reachable through the unchanged CLI surface."""
+    session = _session_dir(pipeline_cfg)
+    source = tmp_path / "to_score.parquet"
+    frame.drop(columns=["target"]).to_parquet(source, index=False)
+    out = tmp_path / "preds.csv"
+
+    code = main(
+        ["--session", str(session), "--input", str(source), "--output", str(out), "--quiet"]
+    )
+
+    assert code == 0
+    written = pd.read_csv(out)
+    assert list(written.columns) == [PREDICTION_COLUMN]
+    assert len(written) == len(frame)
+
+
+def test_csv_and_parquet_inputs_produce_identical_predictions(
+    pipeline_cfg: PipelineConfig, frame: pd.DataFrame, tmp_path: Path
+) -> None:
+    """The reader swap must not have moved the CSV path — same session, same numbers."""
+    session = _session_dir(pipeline_cfg)
+    payload = frame.drop(columns=["target"])
+
+    csv_source = tmp_path / "to_score.csv"
+    payload.to_csv(csv_source, index=False)
+    parquet_source = tmp_path / "to_score.parquet"
+    payload.to_parquet(parquet_source, index=False)
+
+    csv_out, parquet_out = tmp_path / "csv.csv", tmp_path / "parquet.csv"
+    for source, out in ((csv_source, csv_out), (parquet_source, parquet_out)):
+        assert (
+            main(
+                [
+                    "--session",
+                    str(session),
+                    "--input",
+                    str(source),
+                    "--output",
+                    str(out),
+                    "--quiet",
+                ]
+            )
+            == 0
+        )
+
+    pd.testing.assert_frame_equal(pd.read_csv(csv_out), pd.read_csv(parquet_out))
+
+
+def test_unreadable_input_exits_non_zero(
+    pipeline_cfg: PipelineConfig, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A corrupt Parquet reaches the operator as DatasetError, not an ArrowInvalid traceback."""
+    session = _session_dir(pipeline_cfg)
+    source = tmp_path / "corrupt.parquet"
+    source.write_bytes(b"not parquet")
+
+    code = main(
+        [
+            "--session",
+            str(session),
+            "--input",
+            str(source),
+            "--output",
+            str(tmp_path / "preds.csv"),
+        ]
+    )
+
+    assert code == 1
+    assert "error:" in capsys.readouterr().err
+
+
 def test_keep_inputs_writes_source_columns_alongside(
     pipeline_cfg: PipelineConfig, frame: pd.DataFrame, tmp_path: Path
 ) -> None:
