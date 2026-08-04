@@ -654,8 +654,8 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Manual
 
-- [ ] 2.8 `mlpp-predict` scores a Parquet input correctly
-- [ ] 2.9 `mlpp-predict` against `TEST/sample_test_A.csv` produces unchanged output
+- [x] 2.8 `mlpp-predict` scores a Parquet input correctly — 0b87e6d
+- [x] 2.9 `mlpp-predict` against `TEST/sample_test_A.csv` produces unchanged output — 0b87e6d
 
 ### Phase 3: Feature importance
 
@@ -671,9 +671,9 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Manual
 
-- [ ] 3.8 Importance on `OUTPUTS/example` ranks plausibly against the known feature set
-- [ ] 3.9 Re-running with the same seed reproduces identical numbers
-- [ ] 3.10 The `progress` callback fires the expected number of times
+- [x] 3.8 Importance on `OUTPUTS/example` ranks plausibly against the known feature set — ae29a3a
+- [x] 3.9 Re-running with the same seed reproduces identical numbers — ae29a3a
+- [x] 3.10 The `progress` callback fires the expected number of times — ae29a3a
 
 ### Phase 4: Dashboard shell & introspection
 
@@ -688,28 +688,28 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Manual
 
-- [ ] 4.7 The dashboard starts and is reachable only from the local machine
-- [ ] 4.8 Selecting `OUTPUTS/example` shows architecture, contract, history and metrics
-- [ ] 4.9 An incomplete session shows a message naming what is missing, not a traceback
-- [ ] 4.10 Switching sessions updates every panel without a restart
-- [ ] 4.11 Model load shows visible progress rather than an apparently frozen page
+- [x] 4.7 The dashboard starts and is reachable only from the local machine — 5fcc11d
+- [x] 4.8 Selecting `OUTPUTS/example` shows architecture, contract, history and metrics — 5fcc11d
+- [x] 4.9 An incomplete session shows a message naming what is missing, not a traceback — 5fcc11d
+- [x] 4.10 Switching sessions updates every panel without a restart — 5fcc11d
+- [x] 4.11 Model load shows visible progress rather than an apparently frozen page — 5fcc11d
 
 ### Phase 5: Inference panels
 
 #### Automated
 
-- [x] 5.1 Dashboard tests pass: `uv run pytest tests/test_dashboard.py -v`
-- [x] 5.2 Full suite passes: `uv run pytest`
-- [x] 5.3 Fast suite stays TensorFlow-free and has not materially regressed
-- [x] 5.4 Type checking passes: `uv run mypy src/mlpp`
-- [x] 5.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 5.6 `git status --porcelain OUTPUTS/` is empty after a full manual session
+- [x] 5.1 Dashboard tests pass: `uv run pytest tests/test_dashboard.py -v` — a609721
+- [x] 5.2 Full suite passes: `uv run pytest` — a609721
+- [x] 5.3 Fast suite stays TensorFlow-free and has not materially regressed — a609721
+- [x] 5.4 Type checking passes: `uv run mypy src/mlpp` — a609721
+- [x] 5.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — a609721
+- [x] 5.6 `git status --porcelain OUTPUTS/` is empty after a full manual session — a609721
 
 #### Manual
 
-- [ ] 5.7 Importance produces a ranked chart with error bars and visible progress
-- [ ] 5.8 Re-running the same session, dataset and seed returns instantly from cache
-- [ ] 5.9 The single-row form matches the session contract and warns on an extreme value
-- [ ] 5.10 Batch inference works over both CSV and Parquet, with a working download
-- [ ] 5.11 An unseen categorical level surfaces a warning naming column and values
-- [ ] 5.12 All four PRD surfaces are reachable from one `streamlit run`
+- [x] 5.7 Importance produces a ranked chart with error bars and visible progress — a609721
+- [x] 5.8 Re-running the same session, dataset and seed returns instantly from cache — a609721
+- [x] 5.9 The single-row form matches the session contract and warns on an extreme value — a609721
+- [x] 5.10 Batch inference works over both CSV and Parquet, with a working download — a609721
+- [x] 5.11 An unseen categorical level surfaces a warning naming column and values — a609721
+- [x] 5.12 All four PRD surfaces are reachable from one `streamlit run` — a609721
