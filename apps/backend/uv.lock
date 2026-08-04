@@ -1304,6 +1304,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "plotly" },
+    { name = "pyarrow" },
     { name = "scikit-learn" },
     { name = "tensorflow" },
 ]
@@ -1330,6 +1331,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.0,<3" },
     { name = "pandas", specifier = ">=2.2,<4" },
     { name = "plotly", specifier = ">=5.24,<7" },
+    { name = "pyarrow", specifier = ">=17,<25" },
     { name = "scikit-learn", specifier = ">=1.5,<2" },
     { name = "tensorflow", specifier = ">=2.20,<2.21" },
 ]

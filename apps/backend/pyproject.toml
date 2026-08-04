@@ -19,6 +19,7 @@ dependencies = [
     "tensorflow>=2.20,<2.21",
     "numpy>=2.0,<3",
     "pandas>=2.2,<4",
+    "pyarrow>=17,<25",
     "scikit-learn>=1.5,<2",
     "joblib>=1.4,<2",
     "matplotlib>=3.9,<4",
@@ -57,7 +58,21 @@ addopts = "-q --strict-markers"
 markers = [
     "slow: exercises TensorFlow/Keras; excluded via `-m 'not slow'`",
 ]
-filterwarnings = ["error::DeprecationWarning:mlpp.*"]
+filterwarnings = [
+    "error::DeprecationWarning:mlpp.*",
+    # Tripwire. joblib.load of a session's scaler/encoder artifacts is the path every dashboard
+    # panel depends on; a deprecation there is a silent break waiting on a lockfile refresh.
+    # Later filters win, so the scoped ignore below is the only exemption.
+    "error::DeprecationWarning:joblib.*",
+    # KNOWN, DEFERRED — the one exemption, scoped to its exact message so any *other* joblib
+    # deprecation still fails. joblib 1.5.3 does `array.shape = ...` while unpickling, which
+    # numpy 2.5 deprecated; it fires from read_fitted_state() on every load_session().
+    # numpy>=2.0,<3 permits the release that removes it, so this becomes a real break, not a
+    # warning. The fix is a version decision (joblib>=1.6 vs. capping numpy<2.6) and is its own
+    # change — see context/foundation/health-check.md, "A numpy deprecation sits directly on the
+    # artifact-loading path". Delete this line when that change lands.
+    "ignore:Setting the shape on a NumPy array has been deprecated:DeprecationWarning:joblib.*",
+]
 
 [tool.ruff]
 line-length = 100
