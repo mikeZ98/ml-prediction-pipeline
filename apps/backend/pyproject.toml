@@ -6,7 +6,17 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "tensorflow>=2.20,<2.22",
+    # Upper bound is a defect exclusion, not conservatism. TF 2.21.0 paired with numpy 2.5
+    # deadlocks on every Keras model execution once a threaded OpenMP/BLAS runtime
+    # (scikit-learn's vendored libomp, or numpy's own BLAS) is loaded before TensorFlow —
+    # which the TensorFlow-free module split guarantees. The caller blocks forever in
+    # `ProcessFunctionLibraryRuntime::RunSync -> Notification::WaitForNotification` while
+    # every Eigen worker sits idle: it hangs rather than failing, so the suite stops dead
+    # at the first test that runs a model. Either half of the pair avoids it (2.20.0 with
+    # numpy 2.5, or 2.21.0 with numpy 2.3); TF is pinned rather than numpy so pandas can
+    # stay on 3.x. Revisit when TF 2.22 ships.
+    # See context/changes/s-07-tf-sklearn-deadlock/.
+    "tensorflow>=2.20,<2.21",
     "numpy>=2.0,<3",
     "pandas>=2.2,<4",
     "scikit-learn>=1.5,<2",
