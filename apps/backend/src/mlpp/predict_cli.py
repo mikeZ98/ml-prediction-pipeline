@@ -70,9 +70,18 @@ def columns_from(session_dir: Path, *, strict_schema: bool) -> ColumnConfig:
     )
 
 
-def _frame_for_output(
+def prediction_frame(
     source: pd.DataFrame, predictions: pd.Series, *, keep_inputs: bool
 ) -> pd.DataFrame:
+    """Shape predictions for output: the prediction column alone, or beside the inputs.
+
+    Public and shared with the dashboard's batch panel. Duplicating this would give
+    the CSV a different column layout depending on whether it came from the CLI or a
+    download button — the kind of quiet divergence `session.py` exists to prevent.
+
+    Defined in this module because it is TensorFlow-free (Keras is imported inside
+    `_score`), so a caller can import it without paying the training stack.
+    """
     if not keep_inputs:
         return predictions.to_frame()
     out = source.copy()
@@ -105,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         session = load_session(args.session, columns)
         frame = read_table_auto(args.input)
         predictions = _score(session, frame)
-        out = _frame_for_output(frame, predictions, keep_inputs=args.keep_inputs)
+        out = prediction_frame(frame, predictions, keep_inputs=args.keep_inputs)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         out.to_csv(args.output, index=False)
     except MlppError as exc:

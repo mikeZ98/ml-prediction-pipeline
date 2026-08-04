@@ -20,11 +20,25 @@ import pytest
 from mlpp.config import ColumnConfig, DataConfig
 from mlpp.dashboard.loaders import default_outputs_root, list_sessions
 from mlpp.errors import ArtifactError, SchemaVersionError
+from mlpp.predict_cli import PREDICTION_COLUMN, prediction_frame
 from mlpp.session import MANIFEST_FILE, SCHEMA_VERSION, load_session
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 EXAMPLE_SESSION = REPO_ROOT / "OUTPUTS" / "example"
 APP_SCRIPT = REPO_ROOT / "apps" / "backend" / "src" / "mlpp" / "dashboard" / "app.py"
+
+#: Widget labels, not positions. Every panel contributes text inputs and selectboxes,
+#: so `app.text_input[0]` silently means a different widget as soon as a panel is
+#: added — which is exactly how these tests broke once already.
+OUTPUTS_PICKER = "OUTPUTS directory"
+SESSION_PICKER = "Directory"
+
+
+def _widget(collection: object, label: str) -> object:
+    """The one widget carrying `label`. Fails loudly rather than picking by position."""
+    matches = [w for w in collection if w.label == label]  # type: ignore[attr-defined]
+    assert len(matches) == 1, f"expected exactly one {label!r} widget, found {len(matches)}"
+    return matches[0]
 
 
 def test_default_outputs_root_resolves_to_the_repository_outputs() -> None:
@@ -157,14 +171,23 @@ def test_the_app_renders_every_panel_for_the_committed_session() -> None:
 
     assert not app.exception, [e.value for e in app.exception]
     assert not app.error, [e.value for e in app.error]
-    assert [s.value for s in app.subheader] == [
+
+    # Containment, not equality: every PRD surface must be present, but adding a
+    # panel is a normal change and must not fail this test.
+    rendered = {s.value for s in app.subheader}
+    assert {
         "Architecture",
         "Feature contract",
         "Training history",
         "Test metrics",
         "Artifacts",
-    ]
-    assert any("example" in str(option) for option in app.selectbox[0].options)
+        "Feature importance",
+        "Single-row inference",
+        "Batch inference",
+    } <= rendered, sorted(rendered)
+
+    sessions = _widget(app.selectbox, SESSION_PICKER)
+    assert any("example" in str(option) for option in sessions.options)
 
 
 @pytest.mark.slow
@@ -175,12 +198,113 @@ def test_an_invalid_session_renders_an_error_not_a_traceback(tmp_path: Path) -> 
     (tmp_path / "2026-01-01_00-00-00").mkdir()
 
     app = AppTest.from_file(str(APP_SCRIPT), default_timeout=300).run()
-    app = app.text_input[0].set_value(str(tmp_path)).run()
-    app = app.selectbox[0].select(app.selectbox[0].options[0]).run()
+    app = _widget(app.text_input, OUTPUTS_PICKER).set_value(str(tmp_path)).run()
+    sessions = _widget(app.selectbox, SESSION_PICKER)
+    app = sessions.select(sessions.options[0]).run()
 
     assert not app.exception, "an invalid session must never surface a traceback"
     assert app.error, "expected a rendered error naming the problem"
     assert MANIFEST_FILE in app.error[0].value
+
+
+def test_the_download_frame_carries_the_prediction_column_alone_when_toggled_off() -> None:
+    """FR-015, off. Shared with the CLI so a download and `mlpp-predict` agree."""
+    source = pd.DataFrame({"feature_01": [1.0, 2.0], "feature_02": [3.0, 4.0]})
+    predictions = pd.Series([0.5, 0.6], name=PREDICTION_COLUMN)
+
+    out = prediction_frame(source, predictions, keep_inputs=False)
+
+    assert list(out.columns) == [PREDICTION_COLUMN]
+    assert len(out) == 2
+
+
+def test_the_download_frame_carries_inputs_and_prediction_when_toggled_on() -> None:
+    """FR-015, on. The prediction column goes last, after the inputs."""
+    source = pd.DataFrame({"feature_01": [1.0, 2.0], "feature_02": [3.0, 4.0]})
+    predictions = pd.Series([0.5, 0.6], name=PREDICTION_COLUMN)
+
+    out = prediction_frame(source, predictions, keep_inputs=True)
+
+    assert list(out.columns) == ["feature_01", "feature_02", PREDICTION_COLUMN]
+    assert out[PREDICTION_COLUMN].tolist() == [0.5, 0.6]
+
+
+def test_the_download_frame_does_not_mutate_the_source() -> None:
+    """The preview frame on screen must not gain a prediction column behind the scenes."""
+    source = pd.DataFrame({"feature_01": [1.0, 2.0]})
+    before = source.copy()
+
+    prediction_frame(source, pd.Series([0.5, 0.6], name=PREDICTION_COLUMN), keep_inputs=True)
+
+    pd.testing.assert_frame_equal(source, before)
+
+
+def test_out_of_range_flags_an_extreme_value(frame: pd.DataFrame, column_cfg: ColumnConfig) -> None:
+    """FR-022: a value far outside the fitted distribution is named, with its range."""
+    from mlpp.preprocess import Preprocessor, flag_out_of_range
+
+    pre = Preprocessor(column_cfg).fit(frame)
+    scaler = pre.fitted_state.scaler
+    position = pre.schema.numeric.index("feature_01")
+    far = float(scaler.mean_[position] + 10.0 * scaler.scale_[position])
+
+    warnings = flag_out_of_range(pre, {"feature_01": far}, max_sigma=3.0)
+
+    assert [w.column for w in warnings] == ["feature_01"]
+    assert warnings[0].sigma == pytest.approx(10.0)
+    assert warnings[0].low < warnings[0].high < far
+
+
+def test_out_of_range_accepts_a_value_at_the_fitted_mean(
+    frame: pd.DataFrame, column_cfg: ColumnConfig
+) -> None:
+    from mlpp.preprocess import Preprocessor, flag_out_of_range
+
+    pre = Preprocessor(column_cfg).fit(frame)
+    position = pre.schema.numeric.index("feature_01")
+    mean = float(pre.fitted_state.scaler.mean_[position])
+
+    assert flag_out_of_range(pre, {"feature_01": mean}) == ()
+
+
+@pytest.mark.parametrize(
+    ("sigma", "flagged"),
+    [(2.999, False), (3.0, False), (3.001, True)],
+)
+def test_out_of_range_boundary_is_exclusive(
+    frame: pd.DataFrame, column_cfg: ColumnConfig, sigma: float, flagged: bool
+) -> None:
+    """Exactly at the threshold is accepted; the check is `abs(sigma) > max_sigma`."""
+    from mlpp.preprocess import Preprocessor, flag_out_of_range
+
+    pre = Preprocessor(column_cfg).fit(frame)
+    position = pre.schema.numeric.index("feature_01")
+    scaler = pre.fitted_state.scaler
+    value = float(scaler.mean_[position] + sigma * scaler.scale_[position])
+
+    assert bool(flag_out_of_range(pre, {"feature_01": value}, max_sigma=3.0)) is flagged
+
+
+def test_out_of_range_skips_columns_absent_from_the_entry(
+    frame: pd.DataFrame, column_cfg: ColumnConfig
+) -> None:
+    from mlpp.preprocess import Preprocessor, flag_out_of_range
+
+    pre = Preprocessor(column_cfg).fit(frame)
+    assert flag_out_of_range(pre, {}) == ()
+
+
+def test_out_of_range_ignores_a_zero_variance_column(
+    frame: pd.DataFrame, column_cfg: ColumnConfig
+) -> None:
+    """A column that never varied has an undefined sigma, not an infinite one."""
+    from mlpp.preprocess import Preprocessor, flag_out_of_range
+
+    constant = frame.copy()
+    constant["feature_01"] = 5.0
+    pre = Preprocessor(column_cfg).fit(constant)
+
+    assert flag_out_of_range(pre, {"feature_01": 10_000.0}) == ()
 
 
 def _minimal_session(

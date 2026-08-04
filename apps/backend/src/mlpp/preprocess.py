@@ -8,6 +8,7 @@ once during `fit`, stored on the Preprocessor, and reused by every `transform`.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
@@ -268,3 +269,69 @@ class Preprocessor:
 
 def _empty(n_rows: int) -> np.ndarray:
     return np.empty((n_rows, 0), dtype=np.float32)
+
+
+@dataclass(frozen=True, slots=True)
+class RangeWarning:
+    """A numeric entry sitting far outside the range the scaler was fitted on."""
+
+    column: str
+    value: float
+    #: The fitted mean +/- `max_sigma` standard deviations.
+    low: float
+    high: float
+    #: Signed distance from the fitted mean, in standard deviations.
+    sigma: float
+
+
+def flag_out_of_range(
+    pre: Preprocessor, values: Mapping[str, float], *, max_sigma: float = 3.0
+) -> tuple[RangeWarning, ...]:
+    """Numeric entries in `values` more than `max_sigma` sd from the fitted mean.
+
+    A model asked to score far outside its training distribution still returns a
+    confident number, so the caller has to be told rather than shown a plausible
+    extrapolation. `StandardScaler` keeps `mean_` and `scale_` positionally aligned
+    with the columns it was fitted on, which is `schema.numeric`.
+
+    Lives here rather than in the dashboard because it computes: the interface layer
+    renders, and this has to be testable without Streamlit.
+
+    Returns warnings in `schema.numeric` order. Columns absent from `values`,
+    non-finite entries, and zero-variance columns are skipped.
+
+    Zero variance is detected through `var_`, not `scale_`: `StandardScaler` stores
+    `scale_ = 1.0` for a column that never varied, precisely so its own transform does
+    not divide by zero. Testing `scale_` therefore never fires, and every entry in a
+    constant column gets reported with an enormous, meaningless sigma.
+    """
+    scaler = pre.fitted_state.scaler
+    means = np.asarray(scaler.mean_, dtype=np.float64)
+    scales = np.asarray(scaler.scale_, dtype=np.float64)
+    variances = np.asarray(getattr(scaler, "var_", scales**2), dtype=np.float64)
+
+    warnings: list[RangeWarning] = []
+    for position, column in enumerate(pre.schema.numeric):
+        if column not in values:
+            continue
+        raw = values[column]
+        if raw is None or not np.isfinite(float(raw)):
+            continue
+        scale = float(scales[position])
+        if scale <= 0.0 or float(variances[position]) <= 0.0:
+            continue
+
+        mean = float(means[position])
+        sigma = (float(raw) - mean) / scale
+        if abs(sigma) <= max_sigma:
+            continue
+        warnings.append(
+            RangeWarning(
+                column=column,
+                value=float(raw),
+                low=mean - max_sigma * scale,
+                high=mean + max_sigma * scale,
+                sigma=sigma,
+            )
+        )
+    return tuple(warnings)
