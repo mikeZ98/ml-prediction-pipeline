@@ -661,13 +661,13 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Automated
 
-- [x] 3.1 Importance tests pass: `uv run pytest tests/test_importance.py -v`
-- [x] 3.2 Fast subset runs without TensorFlow: `uv run pytest tests/test_importance.py -m 'not slow'`
-- [x] 3.3 Fast suite leaves `tensorflow` and `keras` absent from `sys.modules`
-- [x] 3.4 Fast suite runtime has not materially regressed (baseline 1.56s)
-- [x] 3.5 Full suite passes: `uv run pytest`
-- [x] 3.6 Type checking passes: `uv run mypy src/mlpp`
-- [x] 3.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 3.1 Importance tests pass: `uv run pytest tests/test_importance.py -v` — ae29a3a
+- [x] 3.2 Fast subset runs without TensorFlow: `uv run pytest tests/test_importance.py -m 'not slow'` — ae29a3a
+- [x] 3.3 Fast suite leaves `tensorflow` and `keras` absent from `sys.modules` — ae29a3a
+- [x] 3.4 Fast suite runtime has not materially regressed (baseline 1.56s) — ae29a3a
+- [x] 3.5 Full suite passes: `uv run pytest` — ae29a3a
+- [x] 3.6 Type checking passes: `uv run mypy src/mlpp` — ae29a3a
+- [x] 3.7 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — ae29a3a
 
 #### Manual
 
@@ -679,12 +679,12 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Automated
 
-- [ ] 4.1 Dashboard tests pass: `uv run pytest tests/test_dashboard.py -v`
-- [ ] 4.2 Full suite passes: `uv run pytest`
-- [ ] 4.3 Fast suite stays TensorFlow-free: `uv run pytest -m 'not slow'`
-- [ ] 4.4 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 4.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 4.6 No filename literal appears in `dashboard/`
+- [x] 4.1 Dashboard tests pass: `uv run pytest tests/test_dashboard.py -v`
+- [x] 4.2 Full suite passes: `uv run pytest`
+- [x] 4.3 Fast suite stays TensorFlow-free: `uv run pytest -m 'not slow'`
+- [x] 4.4 Type checking passes: `uv run mypy src/mlpp`
+- [x] 4.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 4.6 No filename literal appears in `dashboard/`
 
 #### Manual
 

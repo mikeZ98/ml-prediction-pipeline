@@ -1,0 +1,14 @@
+# Streamlit defaults for the mlpp dashboard. Read from the working directory, so this
+# applies to the documented `streamlit run` invoked from apps/backend/.
+
+[server]
+# Bind loopback only. Streamlit's default binds every interface and prints a
+# "External URL" on the machine's public address — the dashboard reads trained
+# sessions and scores arbitrary uploads, and PRD FR-021 scopes it to the local
+# machine. This is the difference between a local tool and an unauthenticated
+# inference endpoint on the network.
+address = "localhost"
+
+# No telemetry: session directories and scoring inputs are the author's data.
+[browser]
+gatherUsageStats = false
