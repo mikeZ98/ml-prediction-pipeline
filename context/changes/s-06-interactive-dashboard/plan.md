@@ -626,19 +626,19 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Automated
 
-- [ ] 1.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [ ] 1.2 Fast suite still TensorFlow-free: `uv run pytest -m 'not slow'`
-- [ ] 1.3 Lockfile resolves and is not stale: `uv lock --check`
-- [ ] 1.4 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 1.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 1.6 `pyarrow` importable from a base install: `uv run --no-group dashboard python -c "import pyarrow"`
-- [ ] 1.7 The joblib tripwire fires on an unignored deprecation
+- [x] 1.1 Full suite passes: `cd apps/backend && uv run pytest`
+- [x] 1.2 Fast suite still TensorFlow-free: `uv run pytest -m 'not slow'`
+- [x] 1.3 Lockfile resolves and is not stale: `uv lock --check`
+- [x] 1.4 Type checking passes: `uv run mypy src/mlpp`
+- [x] 1.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 1.6 `pyarrow` importable from a base install: `uv run --no-group dashboard python -c "import pyarrow"`
+- [x] 1.7 The joblib tripwire fires on an unignored deprecation
 
 #### Manual
 
-- [ ] 1.8 No sentence in `CLAUDE.md` or `.cursorrules` now forbids the dashboard
-- [ ] 1.9 The `## Dashboard conventions` section describes the layout Phases 4–5 will build
-- [ ] 1.10 The scoped joblib ignore names the condition and points at the follow-up change
+- [x] 1.8 No sentence in `CLAUDE.md` or `.cursorrules` now forbids the dashboard
+- [x] 1.9 The `## Dashboard conventions` section describes the layout Phases 4–5 will build
+- [x] 1.10 The scoped joblib ignore names the condition and points at the follow-up change
 
 ### Phase 2: Parquet reader
 

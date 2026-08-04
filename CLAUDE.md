@@ -5,13 +5,18 @@
 ## What this is
 Time-series / tabular **regression** pipeline: Conv1D → Bi-GRU → Dense (Keras 3 on TensorFlow).
 Trains sequentially over `TRAIN/*.csv`, evaluates against `TEST/*.csv`, writes a timestamped
-artifact directory under `OUTPUTS/`. **Python only — there is no frontend and no infra stack.**
+artifact directory under `OUTPUTS/`. **Python only — no JavaScript frontend and no infra stack.**
+The dashboard (`mlpp.dashboard`) is a Streamlit app and is still Python; it lives inside the backend
+package, not in `apps/frontend/`.
 
 ## Project boundaries
 - Lives on the Kingston SSD under `Projects/ml-prediction-pipeline`. ALL caches/toolchains stay
   project-local (see `.envrc`); never write to $HOME or the internal disk.
 - Layout:
   - `apps/backend/` — the `mlpp` uv project (src layout + tests). All logic lives here.
+  - `apps/backend/src/mlpp/dashboard/` — the Streamlit app. Sits on the **TensorFlow-owning** side
+    of the module split (it imports `predict`). Never import it from `config`, `data`, `preprocess`,
+    `metrics`, `session` or `errors`.
   - `notebooks/01_exploration_and_baseline.ipynb` — demonstration report reading the committed
     `OUTPUTS/example/` session; **never** re-add pipeline logic to it and never hand-edit the
     `.ipynb`. Its **outputs are committed** so it renders on GitHub, so regenerate with
@@ -24,7 +29,13 @@ artifact directory under `OUTPUTS/`. **Python only — there is no frontend and 
 ## Core tech stack
 - Python 3.12+ (**uv only** — never pip/poetry/conda). TensorFlow 2.20–2.21, Keras 3, numpy 2.x,
   pandas 3.x, scikit-learn 1.9. Lockfile is `apps/backend/uv.lock`; commit it.
-- TypeScript (strict) applies only if a frontend is ever added.
+- Keras 3 (not Keras 2 / `tf.keras`). Import `keras` directly, never `tensorflow.keras`. Use an
+  explicit `layers.Input(shape=...)` rather than `input_shape=` on the first layer, and
+  `keras.saving.load_model` / `.keras` files for persistence. Most Keras material online predates
+  Keras 3 — check `keras.io` before copying an idiom.
+- Streamlit 1.x, in the `dashboard` dependency group. `uv sync` without that group must still yield
+  a working train/predict install.
+- TypeScript (strict) applies only if a JavaScript frontend is ever added.
 
 ## Build & run
 All commands from `apps/backend/` unless noted.
@@ -38,6 +49,9 @@ uv run mlpp-train --no-plots --quiet # CI-friendly run
 # score a new CSV against a trained session (needs TensorFlow — it loads the model)
 uv run mlpp-predict --session ../../OUTPUTS/example --input ../../TEST/sample_test_A.csv \
   --output /tmp/preds.csv
+
+# local dashboard (session introspection, feature importance, single-row + batch inference)
+uv run --group dashboard streamlit run src/mlpp/dashboard/app.py
 ```
 
 Notebook: `uv run python -m ipykernel install --user --name mlpp`, then open
@@ -55,10 +69,14 @@ uv run mypy src/mlpp          # strict; must stay clean
 ```
 
 Tests touching Keras/TF are marked `@pytest.mark.slow`. Keep `config`, `data`, `preprocess`,
-`metrics`, `session` and `errors` **free of TensorFlow imports** — that separation is what keeps
-the fast suite fast, and it is what lets `load_session` validate a session without the training
-stack. `model`, `training`, `plots`, `pipeline` and `predict` own the heavy imports. Run tests
-before declaring done.
+`metrics`, `session`, `errors` and `importance` **free of TensorFlow imports** — that separation is
+what keeps the fast suite fast, and it is what lets `load_session` validate a session without the
+training stack. `model`, `training`, `plots`, `pipeline`, `predict` and `dashboard` own the heavy
+imports. Run tests before declaring done.
+
+`importance`'s core loop is parameterised over a scorer callable so the fast suite can exercise it
+with a stub — only the genuine Keras path needs the `slow` marker. Tests for panels are
+import-and-call, marked `slow` only when they genuinely load Keras.
 
 ## Domain invariants
 - **Fit once.** `Preprocessor.fit` runs on the first TRAIN file only; every later file and all TEST
@@ -78,6 +96,27 @@ before declaring done.
 - Errors are explicit: raise from the `MlppError` hierarchy in `errors.py`, never return `None`
   to signal failure. The one exception is `transform`, which returns `y=None` when the target
   column is genuinely absent (inference input).
+
+## Dashboard conventions
+Streamlit supplies no layout opinions, so these are ours. `mlpp.dashboard` is a thin presentation
+layer — it renders, it does not compute.
+
+- **Entrypoint** is `dashboard/app.py`; run it with
+  `uv run --group dashboard streamlit run src/mlpp/dashboard/app.py` from `apps/backend/`.
+- **One module per panel** under `dashboard/panels/`, mirroring the PRD's surfaces: `introspect.py`,
+  `importance.py`, `single.py`, `batch.py`. Each exposes one `render(...)` taking an already-loaded
+  session — panels never load artifacts themselves.
+- **No domain logic in `dashboard/`.** Anything that computes belongs in a normal `mlpp` module and
+  must be importable and testable without Streamlit. Feature importance lives in `mlpp/importance.py`,
+  not in a panel.
+- **Caching is explicit**: `@st.cache_resource` for the Keras model (unhashable, one per session
+  directory), `@st.cache_data` for dataframes and importance results. Cache keys are scalars —
+  `(session_dir, dataset_path, seed, n_repeats)` — never mutable objects.
+- **Read-only.** The dashboard never writes into `OUTPUTS/`. Downloads go through `st.download_button`.
+- **Artifacts resolve through manifest roles only** — `manifest.filenames_for(ROLE_*)`. Spelling a
+  filename inside `dashboard/` is the same bug `session.py` exists to prevent.
+- **Errors**: catch `MlppError` at the panel boundary and render `st.error(str(exc))`. Never let a
+  traceback reach the browser.
 
 ## Working agreement
 - Smallest correct change; isolated, pure modules. Explicit error handling. No `any`.
