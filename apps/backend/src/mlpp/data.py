@@ -1,4 +1,4 @@
-"""CSV discovery and delimiter-tolerant loading. No TensorFlow import — keep it cheap."""
+"""CSV/Parquet discovery and delimiter-tolerant loading. No TensorFlow import — keep it cheap."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from mlpp.errors import DatasetError
 
 _SNIFF_BYTES = 10_000
 _DELIMITERS = ",;|\t"
+_PARQUET_SUFFIXES = frozenset({".parquet", ".pq"})
 
 
 def read_csv_auto(path: Path) -> pd.DataFrame:
@@ -29,6 +30,33 @@ def read_csv_auto(path: Path) -> pd.DataFrame:
             return _require_rows(df, path)
     msg = f"could not parse {path} with any of the candidate delimiters"
     raise DatasetError(msg)
+
+
+def read_table_auto(path: Path) -> pd.DataFrame:
+    """Read `path` as Parquet or CSV, dispatching on its suffix.
+
+    An additive sibling of `read_csv_auto`, not a replacement: the training path
+    still calls the CSV reader directly, so its delimiter sniffing is untouched by
+    construction. Both branches raise DatasetError, so a caller handles one error
+    type whatever the format.
+    """
+    if path.suffix.lower() in _PARQUET_SUFFIXES:
+        return _read_parquet(path)
+    return read_csv_auto(path)
+
+
+def _read_parquet(path: Path) -> pd.DataFrame:
+    """Read a Parquet file, translating pyarrow's failures into DatasetError.
+
+    pyarrow raises `ArrowInvalid` — a ValueError subclass — for a corrupt file and
+    OSError for an unreadable one. Catching the base classes keeps this module free
+    of a direct pyarrow import while still promising callers a single error type.
+    """
+    try:
+        df = pd.read_parquet(path)
+    except (OSError, ValueError) as exc:
+        raise DatasetError(f"cannot read {path}: {exc}") from exc
+    return _require_rows(df, path)
 
 
 def _candidate_delimiters(path: Path) -> list[str | None]:

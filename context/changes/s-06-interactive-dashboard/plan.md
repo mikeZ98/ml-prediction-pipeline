@@ -626,31 +626,31 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Automated
 
-- [x] 1.1 Full suite passes: `cd apps/backend && uv run pytest`
-- [x] 1.2 Fast suite still TensorFlow-free: `uv run pytest -m 'not slow'`
-- [x] 1.3 Lockfile resolves and is not stale: `uv lock --check`
-- [x] 1.4 Type checking passes: `uv run mypy src/mlpp`
-- [x] 1.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 1.6 `pyarrow` importable from a base install: `uv run --no-group dashboard python -c "import pyarrow"`
-- [x] 1.7 The joblib tripwire fires on an unignored deprecation
+- [x] 1.1 Full suite passes: `cd apps/backend && uv run pytest` — f91206d
+- [x] 1.2 Fast suite still TensorFlow-free: `uv run pytest -m 'not slow'` — f91206d
+- [x] 1.3 Lockfile resolves and is not stale: `uv lock --check` — f91206d
+- [x] 1.4 Type checking passes: `uv run mypy src/mlpp` — f91206d
+- [x] 1.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — f91206d
+- [x] 1.6 `pyarrow` importable from a base install: `uv run --no-group dashboard python -c "import pyarrow"` — f91206d
+- [x] 1.7 The joblib tripwire fires on an unignored deprecation — f91206d
 
 #### Manual
 
-- [x] 1.8 No sentence in `CLAUDE.md` or `.cursorrules` now forbids the dashboard
-- [x] 1.9 The `## Dashboard conventions` section describes the layout Phases 4–5 will build
-- [x] 1.10 The scoped joblib ignore names the condition and points at the follow-up change
+- [x] 1.8 No sentence in `CLAUDE.md` or `.cursorrules` now forbids the dashboard — f91206d
+- [x] 1.9 The `## Dashboard conventions` section describes the layout Phases 4–5 will build — f91206d
+- [x] 1.10 The scoped joblib ignore names the condition and points at the follow-up change — f91206d
 
 ### Phase 2: Parquet reader
 
 #### Automated
 
-- [ ] 2.1 New data tests pass: `uv run pytest tests/test_data.py -v`
-- [ ] 2.2 CLI tests pass: `uv run pytest tests/test_predict_cli.py -v`
-- [ ] 2.3 Full suite passes: `uv run pytest`
-- [ ] 2.4 Fast suite stays TensorFlow-free and ~1.5s: `uv run pytest -m 'not slow'`
-- [ ] 2.5 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 2.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 2.7 Training path untouched: `read_csv_auto` still has exactly two call sites in `pipeline.py`
+- [x] 2.1 New data tests pass: `uv run pytest tests/test_data.py -v`
+- [x] 2.2 CLI tests pass: `uv run pytest tests/test_predict_cli.py -v`
+- [x] 2.3 Full suite passes: `uv run pytest`
+- [x] 2.4 Fast suite stays TensorFlow-free and ~1.5s: `uv run pytest -m 'not slow'`
+- [x] 2.5 Type checking passes: `uv run mypy src/mlpp`
+- [x] 2.6 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 2.7 Training path untouched: `read_csv_auto` still has exactly two call sites in `pipeline.py`
 
 #### Manual
 

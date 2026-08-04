@@ -16,7 +16,7 @@ from pathlib import Path
 import pandas as pd
 
 from mlpp.config import ColumnConfig
-from mlpp.data import read_csv_auto
+from mlpp.data import read_table_auto
 from mlpp.errors import MlppError
 from mlpp.session import LoadedSession, load_session, read_manifest
 
@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="session directory produced by mlpp-train (must contain manifest.json)",
     )
-    parser.add_argument("--input", type=Path, required=True, help="CSV to score")
+    parser.add_argument("--input", type=Path, required=True, help="CSV or Parquet file to score")
     parser.add_argument(
         "--output",
         type=Path,
@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         columns = columns_from(args.session, strict_schema=not args.lenient_schema)
         session = load_session(args.session, columns)
-        frame = read_csv_auto(args.input)
+        frame = read_table_auto(args.input)
         predictions = _score(session, frame)
         out = _frame_for_output(frame, predictions, keep_inputs=args.keep_inputs)
         args.output.parent.mkdir(parents=True, exist_ok=True)
