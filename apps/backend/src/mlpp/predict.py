@@ -11,6 +11,7 @@ seconds, so a long-lived caller (a service) pays it once and scores many frames.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import keras
@@ -69,6 +70,24 @@ def load_model(session: LoadedSession) -> keras.Model:
             f"artifacts ({list(filenames)}); expected exactly one"
         )
     return keras.saving.load_model(session.session_dir / filenames[0])
+
+
+def make_scorer(model: keras.Model) -> Callable[[np.ndarray], np.ndarray]:
+    """Bind `model` into the `Scorer` callable `mlpp.importance` expects.
+
+    This module already owns the Keras import, so supplying the closure here is what
+    lets `importance.py` stay TensorFlow-free.
+
+    Returns *scaled* predictions deliberately. `permutation_importance` compares them
+    against the scaled `y` from `transform`, and R² is invariant under that shared
+    affine transform — so inverting would cost a round-trip per permutation and
+    change nothing.
+    """
+
+    def score(x: np.ndarray) -> np.ndarray:
+        return np.asarray(model.predict(x, verbose=0))
+
+    return score
 
 
 def score_frame(session: LoadedSession, model: keras.Model, df: pd.DataFrame) -> PredictionResult:
