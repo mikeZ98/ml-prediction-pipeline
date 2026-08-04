@@ -679,12 +679,12 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Automated
 
-- [x] 4.1 Dashboard tests pass: `uv run pytest tests/test_dashboard.py -v`
-- [x] 4.2 Full suite passes: `uv run pytest`
-- [x] 4.3 Fast suite stays TensorFlow-free: `uv run pytest -m 'not slow'`
-- [x] 4.4 Type checking passes: `uv run mypy src/mlpp`
-- [x] 4.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [x] 4.6 No filename literal appears in `dashboard/`
+- [x] 4.1 Dashboard tests pass: `uv run pytest tests/test_dashboard.py -v` — 5fcc11d
+- [x] 4.2 Full suite passes: `uv run pytest` — 5fcc11d
+- [x] 4.3 Fast suite stays TensorFlow-free: `uv run pytest -m 'not slow'` — 5fcc11d
+- [x] 4.4 Type checking passes: `uv run mypy src/mlpp` — 5fcc11d
+- [x] 4.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .` — 5fcc11d
+- [x] 4.6 No filename literal appears in `dashboard/` — 5fcc11d
 
 #### Manual
 
@@ -698,12 +698,12 @@ working. Phase 1's instruction-file edits are documentation and carry no runtime
 
 #### Automated
 
-- [ ] 5.1 Dashboard tests pass: `uv run pytest tests/test_dashboard.py -v`
-- [ ] 5.2 Full suite passes: `uv run pytest`
-- [ ] 5.3 Fast suite stays TensorFlow-free and has not materially regressed
-- [ ] 5.4 Type checking passes: `uv run mypy src/mlpp`
-- [ ] 5.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
-- [ ] 5.6 `git status --porcelain OUTPUTS/` is empty after a full manual session
+- [x] 5.1 Dashboard tests pass: `uv run pytest tests/test_dashboard.py -v`
+- [x] 5.2 Full suite passes: `uv run pytest`
+- [x] 5.3 Fast suite stays TensorFlow-free and has not materially regressed
+- [x] 5.4 Type checking passes: `uv run mypy src/mlpp`
+- [x] 5.5 Linting and formatting pass: `uv run ruff check . && uv run ruff format --check .`
+- [x] 5.6 `git status --porcelain OUTPUTS/` is empty after a full manual session
 
 #### Manual
 

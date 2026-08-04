@@ -21,8 +21,17 @@ from pathlib import Path
 import streamlit as st
 
 from mlpp.dashboard import loaders
-from mlpp.dashboard.panels import introspect
+from mlpp.dashboard.panels import batch, importance, introspect, single
 from mlpp.errors import MlppError
+
+#: Tab label -> the panel that draws it. One entry per PRD surface; adding a surface
+#: means adding a module and a line here, never branching inside a panel.
+PANELS = (
+    ("Session", introspect.render),
+    ("Importance", importance.render),
+    ("Single row", single.render),
+    ("Batch", batch.render),
+)
 
 
 def main() -> None:
@@ -47,7 +56,14 @@ def main() -> None:
         )
         return
 
-    introspect.render(session, model)
+    # Every panel is wrapped, not just the loaders above: a panel that raises mid-render
+    # must not take the whole page down with a traceback.
+    for tab, (_, render) in zip(st.tabs([label for label, _ in PANELS]), PANELS, strict=True):
+        with tab:
+            try:
+                render(session, model)
+            except MlppError as exc:
+                st.error(str(exc))
 
 
 def _sidebar_session_picker() -> Path | None:
