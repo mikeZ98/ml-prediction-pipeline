@@ -1,9 +1,10 @@
 ---
 change_id: s-07-tf-sklearn-deadlock
 title: Unblock the full test suite — TensorFlow/scikit-learn OpenMP deadlock
-status: implemented
+status: archived
 created: 2026-08-04
 updated: 2026-08-04
+archived_at: 2026-08-04T20:34:24Z
 ---
 
 ## Notes
