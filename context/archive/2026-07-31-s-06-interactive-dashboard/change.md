@@ -1,9 +1,10 @@
 ---
 change_id: s-06-interactive-dashboard
 title: Interactive Streamlit dashboard for model introspection and inference
-status: implemented
+status: archived
 created: 2026-07-31
 updated: 2026-08-04
+archived_at: 2026-08-04T20:34:24Z
 ---
 
 ## Notes
