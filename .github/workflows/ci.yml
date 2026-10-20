@@ -45,7 +45,11 @@ jobs:
         # silently re-resolving. The notebook group is required: tests/test_notebook.py
         # executes the committed notebook via nbclient, and skipping that gate in CI
         # would recreate the blind spot where a broken notebook reached main unnoticed.
-        run: uv sync --locked --group notebook
+        # The dashboard group is required too: without streamlit installed, mypy
+        # (ignore_missing_imports) types `st` as Any and strict mode rejects
+        # @st.cache_data / st.selectbox as untyped; tests/test_dashboard.py also
+        # imports mlpp.dashboard.loaders, which imports streamlit at module level.
+        run: uv sync --locked --group notebook --group dashboard
 
       - name: Lint
         run: uv run --no-sync ruff check --output-format=github .
