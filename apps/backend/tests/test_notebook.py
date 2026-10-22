@@ -85,18 +85,54 @@ def _text_outputs(notebook: nbformat.NotebookNode) -> list[str]:
     HTML reprs can embed session timestamps, neither guaranteed byte-stable, so
     comparing them would make the determinism check flaky for reasons that say
     nothing about the report's reproducibility.
+
+    Adjacent stream outputs of the same name (stdout/stderr) are merged first. The
+    kernel flushes a cell's prints on a timer, so identical text can arrive as one
+    stream message or several depending on scheduling; nbformat treats consecutive
+    same-name streams as one stream, and so must this comparison.
     """
     collected: list[str] = []
     for cell in notebook.cells:
+        previous_stream: str | None = None
         for output in cell.get("outputs", []):
-            if output.get("output_type") == "stream":
-                text = "".join(output.get("text", ""))
-            elif output.get("output_type") == "execute_result":
-                text = "".join(output.get("data", {}).get("text/plain", ""))
-            else:
+            kind = output.get("output_type")
+            if kind == "stream":
+                text = _ADDRESS.sub(" at 0xADDR", "".join(output.get("text", "")))
+                name = output.get("name", "stdout")
+                if previous_stream == name:
+                    collected[-1] += text
+                else:
+                    collected.append(text)
+                previous_stream = name
                 continue
-            collected.append(_ADDRESS.sub(" at 0xADDR", text))
+            previous_stream = None
+            if kind == "execute_result":
+                text = "".join(output.get("data", {}).get("text/plain", ""))
+                collected.append(_ADDRESS.sub(" at 0xADDR", text))
     return collected
+
+
+def _stream(text: str, name: str = "stdout") -> nbformat.NotebookNode:
+    return nbformat.v4.new_output("stream", name=name, text=text)
+
+
+def test_split_stream_chunks_compare_equal_to_one_chunk() -> None:
+    """Regression pin for a CI flake: the same prints, flushed as one message or two."""
+    one = nbformat.v4.new_notebook(cells=[nbformat.v4.new_code_cell(outputs=[_stream("a\nb\n")])])
+    two = nbformat.v4.new_notebook(
+        cells=[nbformat.v4.new_code_cell(outputs=[_stream("a\n"), _stream("b\n")])]
+    )
+    assert _text_outputs(one) == _text_outputs(two) == ["a\nb\n"]
+
+
+def test_different_streams_or_an_intervening_result_stay_separate() -> None:
+    """Only *adjacent, same-name* streams merge; stderr and results keep their place."""
+    result = nbformat.v4.new_output("execute_result", data={"text/plain": "42"}, execution_count=1)
+    cell = nbformat.v4.new_code_cell(
+        outputs=[_stream("out\n"), _stream("err\n", "stderr"), result, _stream("more\n")]
+    )
+    notebook = nbformat.v4.new_notebook(cells=[cell])
+    assert _text_outputs(notebook) == ["out\n", "err\n", "42", "more\n"]
 
 
 def test_report_is_deterministic() -> None:
