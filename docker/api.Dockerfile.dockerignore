@@ -1,0 +1,9 @@
+# Context is apps/backend. Only pyproject.toml, uv.lock, README.md and src/ are used;
+# everything else is excluded so it never busts the cache or leaks into a layer.
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+src/**/__pycache__/
+src/**/*.py[co]
