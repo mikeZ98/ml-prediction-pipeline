@@ -1,12 +1,12 @@
-"""Global permutation feature importance. No TensorFlow import — keep it cheap.
+"""Global permutation feature importance. No model-runtime import — keep it cheap.
 
 How much does the model's accuracy degrade when one input column's values are
 shuffled? The column whose loss hurts most matters most.
 
 Two design choices carry this module:
 
-Scoring is injected as a `Scorer` callable rather than taking a Keras model, so
-nothing here imports TensorFlow and the whole loop is exercisable in the fast suite
+Scoring is injected as a `Scorer` callable rather than taking a model, so nothing
+here imports a model runtime and the whole loop is exercisable in the fast suite
 with a stub. `mlpp.predict.make_scorer` supplies the real one.
 
 Permutation happens on the *raw DataFrame column*, before `transform`. One-hot

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 Loss = Literal["mse", "huber"]
+Device = Literal["auto", "cpu", "cuda", "mps"]
 
 DEFAULT_INPUT_COLUMNS: tuple[str, ...] = (
     "feature_01",
@@ -79,7 +80,11 @@ class TrainConfig:
     validation_split: float = 0.1
     early_stopping_patience: int = 5
     reduce_lr_patience: int = 3
+    #: Floor for the plateau-driven learning-rate decay.
+    min_lr: float = 1e-5
     loss: Loss = "mse"
+    #: "auto" picks CUDA when available, else CPU. MPS is opt-in: its GRU kernels lag.
+    device: Device = "auto"
     use_onehot: bool = True
     #: Column whose non-zero value marks an "active" sample.
     active_column: str | None = DEFAULT_ACTIVE_COLUMN
@@ -93,6 +98,10 @@ class TrainConfig:
             raise ValueError(f"batch_size must be >= 1, got {self.batch_size}")
         if not 0.0 <= self.validation_split < 1.0:
             raise ValueError(f"validation_split must be in [0, 1), got {self.validation_split}")
+        if self.learning_rate <= 0.0:
+            raise ValueError(f"learning_rate must be > 0, got {self.learning_rate}")
+        if self.min_lr < 0.0:
+            raise ValueError(f"min_lr must be >= 0, got {self.min_lr}")
         if self.active_weight_alpha < 0.0:
             raise ValueError(f"active_weight_alpha must be >= 0, got {self.active_weight_alpha}")
 

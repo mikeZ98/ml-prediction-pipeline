@@ -1,4 +1,4 @@
-"""CSV/Parquet discovery and delimiter-tolerant loading. No TensorFlow import — keep it cheap."""
+"""CSV/Parquet discovery and delimiter-tolerant loading. No model-runtime import — keep it cheap."""
 
 from __future__ import annotations
 

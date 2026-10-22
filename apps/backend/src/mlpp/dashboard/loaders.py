@@ -1,9 +1,9 @@
 """Every artifact read and every cache decision, in one place.
 
 Streamlit reruns the whole script on each interaction, so uncached loading would
-re-read the Keras model on every click. Two decorators, chosen by what they hold:
+rebuild the ONNX Runtime session on every click. Two decorators, chosen by what they hold:
 
-- `@st.cache_resource` for the Keras model — unhashable, one live object per session
+- `@st.cache_resource` for the ONNX model — unhashable, one live object per session
   directory.
 - `@st.cache_data` for dataframes and importance results — copied per caller.
 
@@ -22,8 +22,8 @@ from typing import TYPE_CHECKING
 import pandas as pd
 import streamlit as st
 
-if TYPE_CHECKING:  # `keras` is imported lazily below — this is for the type only.
-    import keras
+if TYPE_CHECKING:  # `mlpp.predict` is imported lazily below — this is for the type only.
+    from mlpp.inference.onnx_model import OnnxModel
 
 from mlpp.config import ColumnConfig
 from mlpp.data import read_table_auto
@@ -90,12 +90,12 @@ def load_session_cached(session_dir: str) -> LoadedSession:
     return load_session(Path(session_dir), columns_for(session_dir))
 
 
-@st.cache_resource(show_spinner="Loading model… (first load imports TensorFlow)")
-def load_model_cached(session_dir: str) -> keras.Model:
-    """The session's Keras model. `cache_resource`: unhashable and expensive.
+@st.cache_resource(show_spinner="Loading model…")
+def load_model_cached(session_dir: str) -> OnnxModel:
+    """The session's ONNX model. `cache_resource`: unhashable and expensive.
 
     `mlpp.predict` is imported inside the function so that merely opening the app
-    does not pay the multi-second TensorFlow import before a session is chosen.
+    does not pay the ONNX Runtime import before a session is chosen.
     """
     from mlpp.predict import load_model
 

@@ -50,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="write the input columns alongside the prediction column",
     )
-    parser.add_argument("--quiet", action="store_true", help="suppress Keras progress bars")
+    parser.add_argument("--quiet", action="store_true", help="only log warnings and errors")
     return parser
 
 
@@ -79,8 +79,8 @@ def prediction_frame(
     the CSV a different column layout depending on whether it came from the CLI or a
     download button — the kind of quiet divergence `session.py` exists to prevent.
 
-    Defined in this module because it is TensorFlow-free (Keras is imported inside
-    `_score`), so a caller can import it without paying the training stack.
+    Defined in this module because it is runtime-free (ONNX Runtime is imported
+    inside `_score`), so a caller can import it without paying for a model runtime.
     """
     if not keep_inputs:
         return predictions.to_frame()
@@ -93,7 +93,7 @@ def _score(session: LoadedSession, frame: pd.DataFrame) -> pd.Series:
     """Score `frame`, warning on unseen levels without failing the run.
 
     `mlpp.predict` is imported here rather than at module scope so `--help` and
-    argument errors never pay the multi-second TensorFlow import.
+    argument errors never pay the ONNX Runtime import.
     """
     from mlpp.predict import load_model, score_frame
 

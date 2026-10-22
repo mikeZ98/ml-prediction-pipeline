@@ -6,8 +6,8 @@ which is how the committed reference run drifted out of compatibility unnoticed.
 Everything written into a session directory now goes through `SessionWriter`, and
 `manifest.json` is the single source of truth for what that directory contains.
 
-TensorFlow-free by design: inspecting or validating a session must never require
-importing Keras.
+Framework-free by design: inspecting or validating a session must never require
+importing PyTorch or ONNX Runtime.
 """
 
 from __future__ import annotations
@@ -26,7 +26,8 @@ from mlpp.preprocess import FeatureSchema, FittedState, Preprocessor
 
 #: Bumped whenever the manifest layout changes incompatibly. The loader rejects
 #: anything it does not recognise rather than guessing.
-SCHEMA_VERSION: Final = 1
+#: v2: PyTorch training — the scoring model is ONNX, checkpoints are torch state dicts.
+SCHEMA_VERSION: Final = 2
 
 MANIFEST_FILE: Final = "manifest.json"
 SESSION_FORMAT: Final = "%Y-%m-%d_%H-%M-%S"
@@ -37,7 +38,10 @@ SCALER_FILE: Final = "scaler.gz"
 OUTPUT_SCALER_FILE: Final = "output_scaler.gz"
 ENCODERS_FILE: Final = "encoders.gz"
 METRICS_FILE: Final = "test_metrics.csv"
-BEST_MODEL_FILE: Final = "best_model.keras"
+#: The ONNX graph every scorer runs.
+BEST_MODEL_FILE: Final = "best_model.onnx"
+#: PyTorch state dict of the same weights, for resuming or re-exporting.
+BEST_CHECKPOINT_FILE: Final = "best_model.pt"
 TRAINING_LOG_FILE: Final = "training_log.csv"
 
 # Artifact roles recorded in the manifest inventory.
@@ -46,6 +50,7 @@ ROLE_OUTPUT_SCALER: Final = "output_scaler"
 ROLE_ENCODERS: Final = "encoders"
 ROLE_METRICS: Final = "metrics"
 ROLE_BEST_MODEL: Final = "best_model"
+ROLE_BEST_CHECKPOINT: Final = "best_checkpoint"
 ROLE_TRAINING_LOG: Final = "training_log"
 ROLE_STAGE_MODEL: Final = "stage_model"
 ROLE_STAGE_HISTORY: Final = "stage_history"
@@ -54,12 +59,12 @@ ROLE_PREDICTION_ANALYSIS: Final = "prediction_analysis"
 
 #: Filenames written by the pre-manifest layout. Used only to tell "this is an old
 #: session" apart from "this is not a session at all" when producing errors.
-_LEGACY_MARKERS: Final = ("feature_config.json", ENCODERS_FILE, SCALER_FILE, BEST_MODEL_FILE)
+_LEGACY_MARKERS: Final = ("feature_config.json", ENCODERS_FILE, SCALER_FILE, "best_model.keras")
 
 
 def stage_model_filename(stage: int) -> str:
-    """Model snapshot for training stage `stage`."""
-    return f"model_iter_{stage:02d}.keras"
+    """PyTorch checkpoint taken at the end of training stage `stage`."""
+    return f"model_iter_{stage:02d}.pt"
 
 
 def stage_history_filename(stage: int) -> str:
@@ -313,8 +318,8 @@ def load_session(session_dir: Path, cfg: ColumnConfig, *, use_onehot: bool = Tru
     Validates that every file the manifest lists is actually present — the
     cross-check whose absence let the committed reference run rot unnoticed.
 
-    Deliberately does not load the Keras model: that would drag TensorFlow into
-    this module, and scoring belongs to the predict CLI, not to the contract.
+    Deliberately does not load the model: that would drag a model runtime into
+    this module, and scoring belongs to `mlpp.predict`, not to the contract.
 
     Raises `SchemaVersionError` for a version this build cannot read, and
     `ArtifactError` when the manifest and the directory disagree.

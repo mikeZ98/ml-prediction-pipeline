@@ -16,14 +16,14 @@ from mlpp.errors import MlppError
 from mlpp.predict_cli import PREDICTION_COLUMN, prediction_frame
 
 if TYPE_CHECKING:  # for the annotation only; the caller supplies a loaded model.
-    import keras
+    from mlpp.inference.onnx_model import OnnxModel
 
 from mlpp.session import LoadedSession
 
 _SUFFIXES = {".csv", ".parquet", ".pq"}
 
 
-def render(session: LoadedSession, model: keras.Model) -> None:
+def render(session: LoadedSession, model: OnnxModel) -> None:
     st.subheader("Batch inference")
     st.caption("Score a CSV or Parquet file. The session directory is never written to.")
 

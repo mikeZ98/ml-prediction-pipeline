@@ -6,7 +6,6 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-import keras
 import numpy as np
 import pandas as pd
 
@@ -14,11 +13,12 @@ from mlpp.config import PipelineConfig
 from mlpp.data import discover_csvs, read_csv_auto
 from mlpp.errors import DatasetError
 from mlpp.metrics import RegressionMetrics, regression_metrics
-from mlpp.model import build_model
 from mlpp.preprocess import Preprocessor
 from mlpp.session import (
+    BEST_CHECKPOINT_FILE,
     BEST_MODEL_FILE,
     METRICS_FILE,
+    ROLE_BEST_CHECKPOINT,
     ROLE_BEST_MODEL,
     ROLE_METRICS,
     ROLE_PREDICTION_ANALYSIS,
@@ -35,7 +35,16 @@ from mlpp.session import (
     training_curves_filename,
     write_fitted_state,
 )
-from mlpp.training import active_sample_weights, set_seed, train
+from mlpp.training.export import export_onnx
+from mlpp.training.loop import (
+    FitResult,
+    active_sample_weights,
+    fit,
+    predict_scaled,
+    save_checkpoint,
+    set_seed,
+)
+from mlpp.training.model import CnnBiGruRegressor, build_model, count_parameters
 
 log = logging.getLogger(__name__)
 
@@ -83,7 +92,8 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
     log.info("session directory: %s", session_dir)
 
     pre = Preprocessor(cfg.data.columns, use_onehot=cfg.train.use_onehot)
-    model = None
+    model: CnnBiGruRegressor | None = None
+    last_x: np.ndarray | None = None
     rows: list[EvaluationRow] = []
 
     for stage, train_path in enumerate(train_files, start=1):
@@ -100,29 +110,37 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
             continue
 
         if model is None:
-            model = build_model(pre.n_features, cfg.train)
+            model = build_model(pre.n_features)
             if verbose:
-                model.summary()
+                log.info("model (%d parameters):\n%s", count_parameters(model), model)
 
         log.info(
             "stage %d/%d: fitting on %s %s", stage, len(train_files), train_path.name, x_train.shape
         )
-        history = train(
+        result = fit(
             model,
             x_train,
             y_train,
-            session_dir,
             cfg.train,
+            checkpoint_path=writer.path_for(BEST_CHECKPOINT_FILE),
+            log_path=writer.path_for(TRAINING_LOG_FILE),
             sample_weight=active_sample_weights(x_train, pre, cfg.train),
             verbose=verbose,
         )
-        # Written by the training callbacks, so record them rather than name them.
-        writer.register(ROLE_BEST_MODEL, BEST_MODEL_FILE)
+        # Written by the fit loop as it runs, so record them rather than name them.
+        writer.register(ROLE_BEST_CHECKPOINT, BEST_CHECKPOINT_FILE)
         writer.register(ROLE_TRAINING_LOG, TRAINING_LOG_FILE)
-        _save_stage_artifacts(
-            model, pre, history.history, writer, stage, write_plots=cfg.eval.write_plots
-        )
+        _save_stage_artifacts(model, pre, result, writer, stage, write_plots=cfg.eval.write_plots)
         rows.extend(_evaluate(model, pre, cfg, test_files, writer, stage, train_path.name))
+        last_x = x_train
+
+    if model is not None and last_x is not None:
+        # Exported once, from the weights the last stage settled on — the same model
+        # the evaluation rows describe. Verified against ONNX Runtime on real rows.
+        onnx_path = export_onnx(
+            model, writer.register(ROLE_BEST_MODEL, BEST_MODEL_FILE), sample=last_x[:256]
+        )
+        log.info("ONNX model written to %s", onnx_path)
 
     if rows:
         metrics_path = writer.register(ROLE_METRICS, METRICS_FILE)
@@ -147,9 +165,9 @@ def _contract_from(pre: Preprocessor) -> FeatureContract:
 
 
 def _save_stage_artifacts(
-    model: keras.Model,
+    model: CnnBiGruRegressor,
     pre: Preprocessor,
-    history: dict[str, list[float]],
+    result: FitResult,
     writer: SessionWriter,
     stage: int,
     *,
@@ -164,11 +182,14 @@ def _save_stage_artifacts(
     `--quiet` silently dropped the training curves while `--no-plots` left them
     on, so console noise and artifact production were the same switch.
     """
+    history = result.history_columns()
     pd.DataFrame(history).to_csv(
         writer.register(ROLE_STAGE_HISTORY, stage_history_filename(stage)), index=False
     )
     write_fitted_state(writer, pre.fitted_state)
-    model.save(writer.register(ROLE_STAGE_MODEL, stage_model_filename(stage)))
+    save_checkpoint(
+        model, writer.register(ROLE_STAGE_MODEL, stage_model_filename(stage)), stage=stage
+    )
     if write_plots:
         from mlpp.plots import plot_training_curves
 
@@ -179,7 +200,7 @@ def _save_stage_artifacts(
 
 
 def _evaluate(
-    model: keras.Model,
+    model: CnnBiGruRegressor,
     pre: Preprocessor,
     cfg: PipelineConfig,
     test_files: list[Path],
@@ -199,7 +220,7 @@ def _evaluate(
             log.warning("skipping %s: no %r column", test_path.name, cfg.data.columns.output_column)
             continue
 
-        y_pred = pre.inverse_target(model.predict(x_test, verbose=0))
+        y_pred = pre.inverse_target(predict_scaled(model, x_test))
         y_true = pre.inverse_target(y_test)
         metrics = regression_metrics(y_true, y_pred)
         rows.append(EvaluationRow(train_name, test_path.name, metrics))

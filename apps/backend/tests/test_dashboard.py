@@ -5,13 +5,14 @@ and the error surface — the behaviour that decides whether an author sees a me
 naming the problem or a traceback.
 
 `list_sessions` is imported from `mlpp.dashboard.loaders`, which imports Streamlit
-but not Keras, so these stay in the fast suite. Tests that genuinely load a model are
+but no model runtime, so these stay in the fast suite. Tests that genuinely load a model are
 marked `slow`.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -107,12 +108,17 @@ def test_a_manifest_listing_an_absent_file_is_rejected(
     """The cross-check whose absence let the committed reference run rot unnoticed."""
     session = _minimal_session(tmp_path, frame, data_cfg)
     payload = json.loads((session / MANIFEST_FILE).read_text(encoding="utf-8"))
-    payload["artifacts"].append({"role": "best_model", "filename": "ghost.keras"})
+    payload["artifacts"].append({"role": "best_model", "filename": "ghost.onnx"})
     (session / MANIFEST_FILE).write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(ArtifactError) as excinfo:
         load_session(session, data_cfg.columns)
-    assert "ghost.keras" in str(excinfo.value)
+    assert "ghost.onnx" in str(excinfo.value)
+
+
+#: A quoted string naming a session artifact. Matching literals only, not bare
+#: substrings, so a module path such as `mlpp.inference.onnx_model` is not a hit.
+_ARTIFACT_LITERAL = re.compile(r"""["'][^"'\n]*(\.onnx|\.pt|\.gz|manifest\.json)["']""")
 
 
 def test_no_filename_literal_appears_in_the_dashboard_package() -> None:
@@ -126,7 +132,7 @@ def test_no_filename_literal_appears_in_the_dashboard_package() -> None:
     for path in package.rglob("*.py"):
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             code = line.split("#", 1)[0]
-            if any(suffix in code for suffix in (".keras", ".gz", "manifest.json")):
+            if _ARTIFACT_LITERAL.search(code):
                 offenders.append(f"{path.relative_to(package)}:{number}: {line.strip()}")
     assert not offenders, "artifact filenames must resolve through the manifest:\n" + "\n".join(
         offenders
@@ -163,7 +169,7 @@ def test_the_app_renders_every_panel_for_the_committed_session() -> None:
 
     Covers what panel-level tests cannot: that `app.py` wires the sidebar, the
     loaders and the panels together, and that the default OUTPUTS path finds real
-    sessions. Marked slow — it loads the Keras model.
+    sessions. Marked slow — it boots Streamlit's harness and loads the model.
     """
     from streamlit.testing.v1 import AppTest
 

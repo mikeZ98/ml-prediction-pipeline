@@ -1,4 +1,4 @@
-"""Regression metrics. Pure NumPy/sklearn — no TensorFlow, no plotting, no I/O."""
+"""Regression metrics. Pure NumPy/sklearn — no model runtime, no plotting, no I/O."""
 
 from __future__ import annotations
 
