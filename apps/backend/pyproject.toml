@@ -43,6 +43,8 @@ mlpp-train = "mlpp.cli:main"
 mlpp-predict = "mlpp.predict_cli:main"
 # Needs the `serve` extra.
 mlpp-serve = "mlpp.inference.api:main"
+# Needs the `monitor` extra.
+mlpp-drift = "mlpp.monitoring.drift_cli:main"
 
 [dependency-groups]
 dashboard = [
@@ -90,6 +92,9 @@ filterwarnings = [
     "ignore:Setting the shape on a NumPy array has been deprecated:DeprecationWarning:joblib.*",
     # MLflow's SQLAlchemy tracking store (third-party, not on mlpp's code path).
     "ignore:The ``noload`` loader strategy is deprecated:DeprecationWarning",
+    # Evidently and its UI stack (litestar) — third-party, imported only by mlpp.monitoring.
+    "ignore::DeprecationWarning:evidently.*",
+    "ignore::DeprecationWarning:litestar.*",
 ]
 
 [tool.ruff]
