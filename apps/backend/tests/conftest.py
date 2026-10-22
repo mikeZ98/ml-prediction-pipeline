@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -61,3 +62,52 @@ def pipeline_cfg(data_cfg: DataConfig, frame: pd.DataFrame) -> PipelineConfig:
         train=TrainConfig(epochs=1, batch_size=16, validation_split=0.2),
         eval=EvalConfig(rolling_window=4, write_plots=False),
     )
+
+
+def write_linear_onnx(
+    path: Path,
+    weights: Sequence[float],
+    *,
+    bias: float = 0.0,
+    metadata: Mapping[str, str] | None = None,
+) -> Path:
+    """A real ONNX graph computing `x[:, :, 0] @ weights + bias`, built without torch.
+
+    Lets tests exercise genuine ONNX Runtime execution in the fast suite: the graph has
+    the exported model's exact I/O contract — `features (batch, n, 1)` to
+    `prediction (batch, 1)` — and a predictable output.
+    """
+    import onnx
+    from onnx import TensorProto, helper, numpy_helper
+
+    n = len(weights)
+    graph = helper.make_graph(
+        [
+            helper.make_node("Squeeze", ["features", "axes"], ["flat"]),
+            helper.make_node("MatMul", ["flat", "w"], ["product"]),
+            helper.make_node("Add", ["product", "b"], ["prediction"]),
+        ],
+        "linear",
+        [helper.make_tensor_value_info("features", TensorProto.FLOAT, ["batch", n, 1])],
+        [helper.make_tensor_value_info("prediction", TensorProto.FLOAT, ["batch", 1])],
+        [
+            numpy_helper.from_array(np.asarray(weights, dtype=np.float32).reshape(n, 1), "w"),
+            numpy_helper.from_array(np.asarray([bias], dtype=np.float32), "b"),
+            numpy_helper.from_array(np.asarray([2], dtype=np.int64), "axes"),
+        ],
+    )
+    model = helper.make_model(
+        graph, opset_imports=[helper.make_opsetid("", 18)], producer_name="mlpp-tests"
+    )
+    model.ir_version = 10  # within every supported onnxruntime's range
+    if metadata:
+        helper.set_model_props(model, dict(metadata))
+    onnx.checker.check_model(model)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    onnx.save(model, str(path))
+    return path
+
+
+@pytest.fixture
+def linear_onnx() -> Callable[..., Path]:
+    return write_linear_onnx
