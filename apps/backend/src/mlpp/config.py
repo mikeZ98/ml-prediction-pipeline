@@ -119,12 +119,38 @@ class EvalConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class TrackingConfig:
+    """MLflow experiment tracking. Off by default in the library; `mlpp-train` turns it on.
+
+    `tracking_uri=None` defers to MLflow's own resolution (`MLFLOW_TRACKING_URI`, then
+    a `mlflow.db` in the working directory). `artifact_location` only applies when
+    the experiment is first created — MLflow fixes it per experiment.
+    """
+
+    enabled: bool = False
+    tracking_uri: str | None = None
+    experiment_name: str = "mlpp"
+    artifact_location: str | None = None
+    #: Log the exported ONNX graph as an MLflow model (with signature and example).
+    log_model: bool = True
+    #: Also register that model under this name in the MLflow Model Registry.
+    registered_model_name: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.experiment_name.strip():
+            raise ValueError("experiment_name must not be blank")
+        if self.registered_model_name is not None and not self.log_model:
+            raise ValueError("registered_model_name requires log_model=True")
+
+
+@dataclass(frozen=True, slots=True)
 class PipelineConfig:
     """Everything `run_pipeline` needs."""
 
     data: DataConfig
     train: TrainConfig = field(default_factory=TrainConfig)
     eval: EvalConfig = field(default_factory=EvalConfig)
+    tracking: TrackingConfig = field(default_factory=TrackingConfig)
 
     @classmethod
     def for_repo(cls, root: Path) -> PipelineConfig:
