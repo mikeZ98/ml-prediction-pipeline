@@ -8,4 +8,5 @@ SECRETS: env only; never hardcode or log. Validate all external IO at boundaries
 LAYOUT: apps/backend (Python `mlpp` pkg, src layout) — no JS frontend. Infra = docker/ + docker-compose.yml only. Streamlit UI = `mlpp.dashboard`, still Python, still in apps/backend. Modules isolated.
 DEPS: TS→bun/pnpm · Py→uv only (never pip/poetry/conda) · Go→modules. Pin + lock.
 TESTS: colocate; run before "done". Conventional Commits.
+GIT: author+committer = mikeZ98 <145975972+mikeZ98@users.noreply.github.com> only. NEVER add Co-Authored-By / "Generated with" / any AI trailer to commits or PRs.
 RESPONSE: minimal tokens. No apologies, no recap, no "here is". Code first.
