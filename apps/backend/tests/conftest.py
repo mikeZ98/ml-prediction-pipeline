@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
+from unittest.mock import MagicMock
 
 import numpy as np
 import pandas as pd
@@ -111,3 +114,32 @@ def write_linear_onnx(
 @pytest.fixture
 def linear_onnx() -> Callable[..., Path]:
     return write_linear_onnx
+
+
+def ort_node(name: str, shape: list[Any], type_: str = "tensor(float)") -> SimpleNamespace:
+    """Stand-in for onnxruntime's `NodeArg` (name, shape, type)."""
+    return SimpleNamespace(name=name, shape=shape, type=type_)
+
+
+def make_mock_ort_session(
+    n_features: int | str = 3,
+    *,
+    run: Callable[..., Any] | None = None,
+    inputs: list[SimpleNamespace] | None = None,
+) -> MagicMock:
+    """A mocked `onnxruntime.InferenceSession` with the exported model's I/O contract.
+
+    By default `run` returns the per-row feature sum, shaped `(batch, 1)` like the real
+    graph — deterministic, so a test can compute the expected prediction exactly.
+    """
+    from mlpp.inference.onnx_model import METADATA_N_PARAMETERS, METADATA_OPSET
+
+    session = MagicMock(name="InferenceSession")
+    session.get_inputs.return_value = inputs or [ort_node("features", ["batch", n_features, 1])]
+    session.get_outputs.return_value = [ort_node("prediction", ["batch", 1])]
+    session.run.side_effect = run or (lambda names, feeds: [feeds["features"].sum(axis=1)])
+    session.get_modelmeta.return_value = SimpleNamespace(
+        producer_name="pytorch",
+        custom_metadata_map={METADATA_N_PARAMETERS: "1234", METADATA_OPSET: "18"},
+    )
+    return session
