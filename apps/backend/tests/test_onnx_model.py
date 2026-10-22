@@ -6,20 +6,15 @@ from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
 
 import numpy as np
 import pandas as pd
 import pytest
+from conftest import make_mock_ort_session, ort_node
 
 from mlpp.config import ColumnConfig
 from mlpp.errors import ArtifactError, InferenceError, SchemaError
-from mlpp.inference.onnx_model import (
-    METADATA_N_PARAMETERS,
-    METADATA_OPSET,
-    OnnxModel,
-    load_onnx_model,
-)
+from mlpp.inference.onnx_model import OnnxModel, load_onnx_model
 from mlpp.preprocess import Preprocessor
 from mlpp.session import (
     BEST_MODEL_FILE,
@@ -32,29 +27,8 @@ from mlpp.session import (
 )
 
 
-def _node(name: str, shape: list[Any], type_: str = "tensor(float)") -> SimpleNamespace:
-    return SimpleNamespace(name=name, shape=shape, type=type_)
-
-
-def _mock_session(
-    n_features: int | str = 3,
-    *,
-    run: Callable[..., Any] | None = None,
-    inputs: list[SimpleNamespace] | None = None,
-) -> MagicMock:
-    session = MagicMock(name="InferenceSession")
-    session.get_inputs.return_value = inputs or [_node("features", ["batch", n_features, 1])]
-    session.get_outputs.return_value = [_node("prediction", ["batch", 1])]
-    session.run.side_effect = run or (lambda names, feeds: [feeds["features"].sum(axis=1)])
-    session.get_modelmeta.return_value = SimpleNamespace(
-        producer_name="pytorch",
-        custom_metadata_map={METADATA_N_PARAMETERS: "1234", METADATA_OPSET: "18"},
-    )
-    return session
-
-
 def test_predict_binds_the_graph_input_and_returns_one_value_per_row() -> None:
-    session = _mock_session()
+    session = make_mock_ort_session()
     model = OnnxModel(session)
     x = np.arange(12, dtype=np.float64).reshape(4, 3, 1)
 
@@ -70,7 +44,7 @@ def test_predict_binds_the_graph_input_and_returns_one_value_per_row() -> None:
 
 
 def test_a_non_contiguous_view_is_copied_before_scoring() -> None:
-    session = _mock_session()
+    session = make_mock_ort_session()
     x = np.asfortranarray(np.ones((5, 3, 1), dtype=np.float32))
     OnnxModel(session).predict(x)
     (_, feeds), _ = session.run.call_args
@@ -81,20 +55,20 @@ def test_a_non_contiguous_view_is_copied_before_scoring() -> None:
 def test_a_mis_shaped_input_is_a_schema_error_before_the_runtime_runs(
     shape: tuple[int, ...],
 ) -> None:
-    session = _mock_session()
+    session = make_mock_ort_session()
     with pytest.raises(SchemaError):
         OnnxModel(session).predict(np.zeros(shape, dtype=np.float32))
     session.run.assert_not_called()
 
 
 def test_a_symbolic_feature_axis_accepts_any_width() -> None:
-    model = OnnxModel(_mock_session(n_features="n"))
+    model = OnnxModel(make_mock_ort_session(n_features="n"))
     assert model.n_features is None
     assert model.predict(np.ones((2, 7, 1), dtype=np.float32)).tolist() == [7.0, 7.0]
 
 
 def test_an_empty_batch_short_circuits() -> None:
-    session = _mock_session()
+    session = make_mock_ort_session()
     out = OnnxModel(session).predict(np.zeros((0, 3, 1), dtype=np.float32))
     assert out.shape == (0,)
     session.run.assert_not_called()
@@ -105,12 +79,12 @@ def test_a_runtime_failure_becomes_an_inference_error() -> None:
         raise RuntimeError("[ONNXRuntimeError] : 2 : INVALID_ARGUMENT")
 
     with pytest.raises(InferenceError, match="failed to score 2 row") as excinfo:
-        OnnxModel(_mock_session(run=explode)).predict(np.zeros((2, 3, 1)))
+        OnnxModel(make_mock_ort_session(run=explode)).predict(np.zeros((2, 3, 1)))
     assert isinstance(excinfo.value.__cause__, RuntimeError)
 
 
 def test_an_output_that_is_not_one_value_per_row_is_rejected() -> None:
-    session = _mock_session(run=lambda names, feeds: [np.zeros((3, 2), dtype=np.float32)])
+    session = make_mock_ort_session(run=lambda names, feeds: [np.zeros((3, 2), dtype=np.float32)])
     with pytest.raises(InferenceError, match="one value per row"):
         OnnxModel(session).predict(np.zeros((3, 3, 1)))
 
@@ -118,21 +92,21 @@ def test_an_output_that_is_not_one_value_per_row_is_rejected() -> None:
 @pytest.mark.parametrize(
     "inputs",
     [
-        [_node("a", ["batch", 3, 1]), _node("b", ["batch", 3, 1])],
-        [_node("features", ["batch", 3, 1], "tensor(double)")],
-        [_node("features", ["batch", 3])],
-        [_node("features", ["batch", 3, 2])],
+        [ort_node("a", ["batch", 3, 1]), ort_node("b", ["batch", 3, 1])],
+        [ort_node("features", ["batch", 3, 1], "tensor(double)")],
+        [ort_node("features", ["batch", 3])],
+        [ort_node("features", ["batch", 3, 2])],
     ],
 )
 def test_a_graph_with_the_wrong_io_contract_is_rejected_at_load(
     inputs: list[SimpleNamespace],
 ) -> None:
     with pytest.raises(ArtifactError):
-        OnnxModel(_mock_session(inputs=inputs))
+        OnnxModel(make_mock_ort_session(inputs=inputs))
 
 
 def test_describe_reads_the_export_metadata() -> None:
-    description = OnnxModel(_mock_session(), source=Path("m.onnx")).describe()
+    description = OnnxModel(make_mock_ort_session(), source=Path("m.onnx")).describe()
     assert description.input_name == "features"
     assert description.input_shape == ("batch", 3, 1)
     assert description.producer == "pytorch"
@@ -142,7 +116,7 @@ def test_describe_reads_the_export_metadata() -> None:
 
 
 def test_describe_tolerates_a_graph_without_metadata() -> None:
-    session = _mock_session()
+    session = make_mock_ort_session()
     session.get_modelmeta.return_value = SimpleNamespace(producer_name="", custom_metadata_map={})
     description = OnnxModel(session).describe()
     assert (description.opset, description.n_parameters, description.producer) == (
