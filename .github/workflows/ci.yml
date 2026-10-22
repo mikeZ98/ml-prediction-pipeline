@@ -90,3 +90,51 @@ jobs:
         # results while its code still comes from scripts/build_notebook.py.
         # Only stdlib is used, so no project sync is needed.
         run: uv run --no-project --python 3.12 python scripts/check_notebook_drift.py
+
+  docker:
+    name: serving image builds and serves the reference session
+    runs-on: ubuntu-latest
+    needs: quality
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate the compose file
+        run: docker compose config --quiet
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the API image
+        # The Dockerfile itself fails the build if torch/mlflow leak into the image.
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/backend
+          file: docker/api.Dockerfile
+          tags: mlpp-api:ci
+          load: true
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test the container against OUTPUTS/example
+        run: |
+          docker run -d --name mlpp-api --read-only --tmpfs /tmp --cap-drop ALL \
+            -p 127.0.0.1:8100:8100 \
+            -v "$PWD/OUTPUTS/example:/models/session:ro" mlpp-api:ci
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8100/health/ready && break
+            sleep 2
+          done
+          curl -sf http://127.0.0.1:8100/health/ready
+          # One row naming every column in the manifest: numerics 0.0, categoricals an
+          # unseen level (scored, and reported as unseen).
+          body=$(python3 -c "import json; f=json.load(open('OUTPUTS/example/manifest.json'))['features']; row={c: 0.0 for c in f['numeric_columns']} | {c: 'smoke' for c in f['categorical_columns']}; print(json.dumps({'records': [row]}))")
+          curl -sf -H 'Content-Type: application/json' -d "$body" \
+            http://127.0.0.1:8100/v1/predict | tee /dev/stderr | grep -q '"n_records":1'
+          test "$(docker inspect -f '{{.Config.User}}' mlpp-api)" = "mlpp"
+
+      - name: Container logs
+        if: always()
+        run: docker logs mlpp-api || true

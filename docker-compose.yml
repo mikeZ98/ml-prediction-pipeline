@@ -1,0 +1,103 @@
+# --------------------------------------------------------------------------- #
+# Local MLOps stack for ml-prediction-pipeline.
+#
+#   api     FastAPI + ONNX Runtime serving one trained session  -> :8100
+#   mlflow  MLflow tracking server + artifact proxy (SQLite)      -> :5050
+#
+#   docker compose up -d --build        # start both
+#   docker compose logs -f api
+#   docker compose down                 # stop (named volumes survive)
+#   docker compose down -v              # stop and wipe MLflow's store
+#
+# Train against the server from the host:
+#   cd apps/backend && MLFLOW_TRACKING_URI=http://localhost:5050 uv run mlpp-train
+#
+# Ports are bound to 127.0.0.1 only and chosen to avoid the other local projects
+# (8000, 3000, 6333/6334) and macOS AirPlay, which holds :5000.
+# --------------------------------------------------------------------------- #
+name: ml-prediction-pipeline
+
+services:
+  api:
+    build:
+      context: ./apps/backend
+      dockerfile: ../../docker/api.Dockerfile
+    image: mlpp-api:local
+    container_name: mlpp-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MLPP_API_PORT:-8100}:8100"
+    environment:
+      MLPP_SESSION_DIR: /models/session
+      MLPP_PAYLOAD_DIR: /data/payloads
+      MLPP_MAX_BATCH_ROWS: ${MLPP_MAX_BATCH_ROWS:-1000}
+      MLPP_MAX_CONCURRENCY: ${MLPP_MAX_CONCURRENCY:-4}
+      MLPP_INTRA_OP_THREADS: ${MLPP_INTRA_OP_THREADS:-2}
+    volumes:
+      # The session to serve, read-only. Point MLPP_SESSION at any OUTPUTS/<run>.
+      - ${MLPP_SESSION:-./OUTPUTS/example}:/models/session:ro
+      # Captured payloads land on the host so `mlpp-drift` can read them.
+      # On Linux, make PAYLOADS/ writable by uid 10001 (see README).
+      - ./PAYLOADS:/data/payloads
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.17.2
+    container_name: mlpp-mlflow
+    restart: unless-stopped
+    command:
+      - mlflow
+      - server
+      - --host=0.0.0.0
+      - --port=5000
+      - --backend-store-uri=sqlite:////mlflow/db/mlflow.db
+      # Clients upload through the server (mlflow-artifacts:/), so they need no
+      # direct access to the artifact volume.
+      - --serve-artifacts
+      - --artifacts-destination=/mlflow/artifacts
+    ports:
+      - "127.0.0.1:${MLFLOW_PORT:-5050}:5000"
+    volumes:
+      - mlflow-db:/mlflow/db
+      - mlflow-artifacts:/mlflow/artifacts
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mlflow-db:
+  mlflow-artifacts:
