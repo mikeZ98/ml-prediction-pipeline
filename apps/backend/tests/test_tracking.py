@@ -15,6 +15,7 @@ import pytest
 from mlpp.cli import build_parser, tracking_from_args
 from mlpp.config import PipelineConfig, TrackingConfig
 from mlpp.errors import TrackingError, TrainingError
+from mlpp.session import SCHEMA_VERSION
 from mlpp.training.tracking import NullTracker, metric_key, start_tracking
 
 
@@ -142,7 +143,8 @@ def test_a_tracked_pipeline_run_records_params_metrics_and_artifacts(
     assert params["train.epochs"] == "2"
     assert params["data.n_features"] == "3"
     assert params["data.train_files"] == "train_01.csv,train_02.csv"
-    assert run.data.tags["mlpp.schema_version"] == "2"
+    assert run.data.tags["mlpp.schema_version"] == str(SCHEMA_VERSION)
+    assert run.data.tags["mlpp.session"] == result.session_dir.name
 
     # One step per epoch across both stages, on a single global axis.
     history = client.get_metric_history(result.run_id, "train_loss")

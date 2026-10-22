@@ -138,7 +138,8 @@ def _inventory(session: LoadedSession) -> None:
     ]
     st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
     st.caption(
-        f"schema_version {session.manifest.schema_version} · created {session.manifest.created}"
+        f"session {session.manifest.session_id} · schema_version "
+        f"{session.manifest.schema_version} · created {session.manifest.created}"
     )
 
 

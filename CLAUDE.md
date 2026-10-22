@@ -109,7 +109,11 @@ the fast suite can use a stub.
 - **Artifacts are rejected, not migrated.** A session whose `schema_version` differs raises
   `SchemaVersionError`. Bump `SCHEMA_VERSION` on a breaking layout change; do not add
   compatibility shims — regenerating a session takes seconds. v2 = ONNX `best_model` + torch `.pt`
-  checkpoints; regenerate `OUTPUTS/example` (and re-execute the notebook) after a bump.
+  checkpoints; v3 adds `session_id`. Regenerate `OUTPUTS/example` (and re-execute the notebook)
+  after a bump — training is deterministic, so metrics should not change.
+- **Session identity comes from the manifest.** `manifest.session_id` is the directory name at
+  creation. Never derive identity from `session_dir.name`: in a container the directory is the
+  `/models/session` mount point.
 - **One scoring path.** API, `mlpp-predict`, dashboard and notebook all score through
   `mlpp.predict.score_frame` on the session's ONNX graph. Never score with the in-memory torch
   model outside training/evaluation.

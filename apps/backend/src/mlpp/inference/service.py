@@ -54,7 +54,9 @@ class InferenceService:
         features = session.manifest.features
         self._columns = list(features.numeric_columns + features.categorical_columns)
         self._ref = ModelRef(
-            session=session.session_dir.name,
+            # From the manifest, not the path: in a container the directory is a
+            # mount point (/models/session) and its name says nothing about the run.
+            session=session.manifest.session_id,
             created=session.manifest.created,
             schema_version=session.manifest.schema_version,
         )

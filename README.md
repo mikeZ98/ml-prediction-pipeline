@@ -104,7 +104,7 @@ drift column set and the dashboard forms are all derived from it.
 ├─ docker-compose.yml               # api + mlflow
 ├─ notebooks/                       # demo report over OUTPUTS/example (generated)
 ├─ TRAIN/ · TEST/                   # sample CSVs
-├─ OUTPUTS/example/                 # committed reference session (schema v2)
+├─ OUTPUTS/example/                 # committed reference session (schema v3)
 ├─ PAYLOADS/                        # captured inference payloads (git-ignored)
 ├─ mlruns/                          # local MLflow store when no server is used (git-ignored)
 └─ scripts/                         # quickstart · notebook generator · drift gate
@@ -289,11 +289,11 @@ across time.
 
 ## 📊 Session artifacts
 
-Per session directory `OUTPUTS/<timestamp>/` (schema version 2):
+Per session directory `OUTPUTS/<timestamp>/` (schema version 3):
 
 | File | Role | Contents |
 | --- | --- | --- |
-| `manifest.json` | — | schema version, the column contract, an inventory of every file below |
+| `manifest.json` | — | schema version, `session_id`, the column contract, an inventory of every file below |
 | `best_model.onnx` | `best_model` | the graph every scorer runs; dynamic batch axis, opset 18 |
 | `best_model.pt` | `best_checkpoint` | PyTorch state dict of the best weights (`weights_only` load) |
 | `model_iter_NN.pt` | `stage_model` | checkpoint after each training stage |
@@ -303,7 +303,11 @@ Per session directory `OUTPUTS/<timestamp>/` (schema version 2):
 | `test_metrics.csv` | `metrics` | MSE/RMSE/MAE/R² per (train stage, test file) |
 
 Sessions written under a different `schema_version` are **rejected, not migrated**. Regenerating
-one takes seconds. Version 1 sessions (Keras) do not load.
+one takes seconds. Version 1 (Keras) and version 2 (pre-`session_id`) sessions do not load.
+
+`session_id` is the directory name the session was created under. It is the identity the API reports
+in every response (`model.session`) and the MLflow run name, so a session keeps its identity when
+it is copied, renamed or mounted at `/models/session` in the container.
 
 ---
 

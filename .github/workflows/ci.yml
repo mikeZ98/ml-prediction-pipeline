@@ -131,8 +131,13 @@ jobs:
           # One row naming every column in the manifest: numerics 0.0, categoricals an
           # unseen level (scored, and reported as unseen).
           body=$(python3 -c "import json; f=json.load(open('OUTPUTS/example/manifest.json'))['features']; row={c: 0.0 for c in f['numeric_columns']} | {c: 'smoke' for c in f['categorical_columns']}; print(json.dumps({'records': [row]}))")
-          curl -sf -H 'Content-Type: application/json' -d "$body" \
-            http://127.0.0.1:8100/v1/predict | tee /dev/stderr | grep -q '"n_records":1'
+          response=$(curl -sf -H 'Content-Type: application/json' -d "$body" \
+            http://127.0.0.1:8100/v1/predict)
+          echo "$response"
+          echo "$response" | grep -q '"n_records":1'
+          # Identity comes from the manifest, not the /models/session mount point.
+          session_id=$(python3 -c "import json; print(json.load(open('OUTPUTS/example/manifest.json'))['session_id'])")
+          echo "$response" | grep -q "\"session\":\"$session_id\""
           test "$(docker inspect -f '{{.Config.User}}' mlpp-api)" = "mlpp"
 
       - name: Container logs
