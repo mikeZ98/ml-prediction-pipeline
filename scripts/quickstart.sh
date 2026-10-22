@@ -10,7 +10,7 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 echo "==> syncing apps/backend"
-uv sync --project apps/backend --all-groups
+uv sync --project apps/backend --all-extras --all-groups
 
 echo "==> training (pass extra flags through, e.g. $0 --epochs 20)"
 uv run --project apps/backend mlpp-train "$@"
