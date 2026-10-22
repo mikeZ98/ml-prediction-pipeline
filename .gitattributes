@@ -1,0 +1,12 @@
+# GitHub Linguist: language statistics should describe the source, not the artifacts.
+#
+# OUTPUTS/example/ is the committed reference run (see .gitignore). Its prediction_analysis_*.html
+# reports are Plotly exports with plotly.js inlined (~4.6 MB each), which made GitHub label this
+# Python project "HTML". Mark the whole run as generated: excluded from stats, collapsed in diffs.
+OUTPUTS/** linguist-generated=true
+
+# Any other HTML here is a generated report (Plotly, Evidently drift), never hand-written source.
+*.html linguist-detectable=false
+
+# The notebook is a demonstration report built by scripts/build_notebook.py, not pipeline code.
+notebooks/*.ipynb linguist-documentation=true
