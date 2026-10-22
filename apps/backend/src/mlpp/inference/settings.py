@@ -28,3 +28,5 @@ class ServiceSettings(BaseSettings):
     max_concurrency: int = Field(4, ge=1, le=256)
     #: ONNX Runtime intra-op threads per call; None lets the runtime decide.
     intra_op_threads: int | None = Field(None, ge=1)
+    #: Where scored payloads are captured for drift analysis; None disables capture.
+    payload_dir: Path | None = None

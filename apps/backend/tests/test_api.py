@@ -531,3 +531,49 @@ def test_contract_fixture_matches_the_manifest(session: LoadedSession) -> None:
     assert session.manifest.features == FeatureContract(
         NUMERIC, CATEGORICAL, "target", (*NUMERIC, "site_north", "site_south")
     )
+
+
+# --- payload capture --------------------------------------------------------------------
+
+
+def test_scored_payloads_are_captured_for_drift_analysis(
+    session: LoadedSession, ort_session: MagicMock, settings: ServiceSettings, tmp_path: Path
+) -> None:
+    from mlpp.monitoring.payloads import JsonlPayloadSink, read_payloads
+
+    sink = JsonlPayloadSink(tmp_path / "payloads")
+    service = InferenceService(session, OnnxModel(ort_session), sink=sink)
+    records = [_row(), _row(feature_01=-1.5, site="south")]
+    with TestClient(create_app(settings, service=service)) as client:
+        response = _post(client, {"records": records}, headers={REQUEST_ID_HEADER: "cap-1"})
+        _post(client, {"records": [_row(feature_01="bad")]})  # rejected: never captured
+
+    captured = read_payloads(sink.directory)
+    assert captured[list(NUMERIC + CATEGORICAL)].to_dict("records") == records
+    assert captured["prediction"].tolist() == response.json()["predictions"]
+    assert set(captured["request_id"]) == {"cap-1"}
+
+
+def test_a_failing_payload_sink_never_fails_the_request(
+    session: LoadedSession,
+    ort_session: MagicMock,
+    settings: ServiceSettings,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    broken = MagicMock()
+    broken.write.side_effect = OSError("disk full")
+    service = InferenceService(session, OnnxModel(ort_session), sink=broken)
+    with TestClient(create_app(settings, service=service)) as client:
+        response = _post(client, {"records": [_row()]})
+    assert response.status_code == 200
+    assert "payload capture failed" in caplog.text
+
+
+def test_settings_enable_capture_through_the_payload_dir(
+    session: LoadedSession, tmp_path: Path
+) -> None:
+    payload_dir = tmp_path / "captured"
+    settings = ServiceSettings(session_dir=session.session_dir, payload_dir=payload_dir)
+    with TestClient(create_app(settings)) as client:
+        assert _post(client, {"records": [_row()]}).status_code == 200
+    assert len(list(payload_dir.glob("payloads-*.jsonl"))) == 1
