@@ -1,9 +1,10 @@
 """mlpp — time-series / tabular regression pipeline.
 
 Import layers deliberately: `config`, `data`, `preprocess`, `metrics`, `session`,
-`errors` and `importance` are TensorFlow-free and cheap to import. `model`,
-`training`, `plots`, `pipeline` and `predict` pull in the heavy stack, so import
-them only when needed.
+`errors`, `importance` and `schemas` are framework-free and cheap to import.
+`predict` and `inference` add ONNX Runtime only. `training`, `plots` and `pipeline`
+pull in PyTorch (the `train` extra); `monitoring.drift` pulls in Evidently (the
+`monitor` extra). Import those only when needed.
 """
 
 from mlpp.errors import (
@@ -14,6 +15,7 @@ from mlpp.errors import (
     NotFittedError,
     SchemaError,
     SchemaVersionError,
+    TrainingError,
 )
 
 __version__ = "0.1.0"
@@ -26,5 +28,6 @@ __all__ = [
     "NotFittedError",
     "SchemaError",
     "SchemaVersionError",
+    "TrainingError",
     "__version__",
 ]

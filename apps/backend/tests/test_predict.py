@@ -1,4 +1,4 @@
-"""Scoring an existing session. Every test here imports Keras — all marked slow."""
+"""Scoring an existing session through ONNX Runtime. Slow: each test trains a session first."""
 
 from __future__ import annotations
 

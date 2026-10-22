@@ -30,6 +30,10 @@ class SchemaVersionError(ArtifactError):
     """
 
 
+class TrainingError(MlppError):
+    """Training could not produce a usable model (e.g. the loss went non-finite)."""
+
+
 class InferenceError(MlppError):
     """The model runtime failed on an input that had already passed validation.
 

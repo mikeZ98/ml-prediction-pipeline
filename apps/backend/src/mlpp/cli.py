@@ -58,7 +58,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--active-weight-alpha", type=float, default=0.0)
     parser.add_argument("--rolling-window", type=int, default=500)
     parser.add_argument("--no-plots", action="store_true", help="skip PNG/HTML artifacts")
-    parser.add_argument("--quiet", action="store_true", help="suppress Keras progress bars")
+    parser.add_argument("--quiet", action="store_true", help="suppress per-epoch progress logs")
+    parser.add_argument(
+        "--device",
+        choices=("auto", "cpu", "cuda", "mps"),
+        default="auto",
+        help="training device; auto picks CUDA when available, else CPU",
+    )
     return parser
 
 
@@ -81,6 +87,7 @@ def config_from_args(args: argparse.Namespace) -> PipelineConfig:
             batch_size=args.batch_size,
             seed=args.seed,
             loss=args.loss,
+            device=args.device,
             active_weight_alpha=args.active_weight_alpha,
             active_column=(
                 DEFAULT_ACTIVE_COLUMN if DEFAULT_ACTIVE_COLUMN in args.input_columns else None

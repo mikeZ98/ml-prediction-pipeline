@@ -29,9 +29,9 @@ CELLS: list[tuple[str, str]] = [
 
 A demonstration report over the committed reference run in `OUTPUTS/example/`.
 
-**The model.** A Conv1D → stacked Bi-GRU → linear head regressor (Keras 3 on
-TensorFlow), trained sequentially over `TRAIN/*.csv` and evaluated against every
-`TEST/*.csv` after each stage.
+**The model.** A Conv1D → stacked Bi-GRU → linear head regressor trained in
+PyTorch, sequentially over `TRAIN/*.csv`, evaluated against every `TEST/*.csv`
+after each stage, and exported to ONNX for serving.
 
 **What this notebook does.** It *reads* a trained session — nothing is trained
 here. Everything below comes from `OUTPUTS/example/`, a committed artifact
@@ -50,7 +50,7 @@ Every session directory carries a `manifest.json` that is the single source of
 truth for what the model expects and what the directory contains. A reader never
 has to guess a filename or restate the column list — it asks the manifest.
 
-Note that `load_session` is TensorFlow-free: inspecting and validating a session
+Note that `load_session` is framework-free: inspecting and validating a session
 is cheap, and the model is only loaded when you actually score something.
 """,
     ),
@@ -108,7 +108,8 @@ metrics.round(4)""",
         """## Scoring new data
 
 The same session can score a CSV it has never seen, through the inference seam
-(`mlpp.predict`). Predictions come back in the target's original units — the
+(`mlpp.predict`), which runs the session's ONNX graph on ONNX Runtime — the same
+path the HTTP service uses, with no training framework involved. Predictions come back in the target's original units — the
 target scaler is inverted on the way out, so these are directly comparable to the
 truth column rather than living in standardised space.
 

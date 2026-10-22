@@ -16,12 +16,12 @@ from mlpp.errors import MlppError
 from mlpp.importance import ImportanceResult
 
 if TYPE_CHECKING:  # for the annotation only; the caller supplies a loaded model.
-    import keras
+    from mlpp.inference.onnx_model import OnnxModel
 
 from mlpp.session import LoadedSession
 
 
-def render(session: LoadedSession, model: keras.Model) -> None:
+def render(session: LoadedSession, model: OnnxModel) -> None:
     """Pick a dataset, run importance against it, read the result as a ranked chart."""
     st.subheader("Feature importance")
     st.caption(

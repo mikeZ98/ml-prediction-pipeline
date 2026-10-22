@@ -7,7 +7,6 @@ FR-004 through FR-007. Every filename is resolved through
 
 from __future__ import annotations
 
-import io
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,7 +14,7 @@ import pandas as pd
 import streamlit as st
 
 if TYPE_CHECKING:  # for the annotation only; the caller supplies a loaded model.
-    import keras
+    from mlpp.inference.onnx_model import OnnxModel
 
 from mlpp.session import (
     ROLE_METRICS,
@@ -26,7 +25,7 @@ from mlpp.session import (
 )
 
 
-def render(session: LoadedSession, model: keras.Model) -> None:
+def render(session: LoadedSession, model: OnnxModel) -> None:
     """Draw every introspection surface for an already-loaded session."""
     _architecture(model)
     st.divider()
@@ -39,18 +38,26 @@ def render(session: LoadedSession, model: keras.Model) -> None:
     _inventory(session)
 
 
-def _architecture(model: keras.Model) -> None:
-    """FR-004. `model.summary()` prints; capture it rather than letting it hit stdout."""
+def _architecture(model: OnnxModel) -> None:
+    """FR-004. What the served ONNX graph declares: its I/O contract and export metadata."""
     st.subheader("Architecture")
 
-    buffer = io.StringIO()
-    model.summary(print_fn=lambda line: buffer.write(line + "\n"))
-    st.code(buffer.getvalue(), language="text")
+    description = model.describe()
+    st.code(
+        "\n".join(
+            [
+                f"input   {description.input_name}  {list(description.input_shape)}",
+                f"output  {description.output_name}  {list(description.output_shape)}",
+                f"producer {description.producer}  opset {description.opset or 'unknown'}",
+            ]
+        ),
+        language="text",
+    )
 
-    total = int(sum(int(w.size) for w in model.get_weights()))
     left, right = st.columns(2)
-    left.metric("Input shape", str(model.input_shape))
-    right.metric("Parameters", f"{total:,}")
+    left.metric("Input shape", str(tuple(description.input_shape)))
+    parameters = description.n_parameters
+    right.metric("Parameters", "unknown" if parameters is None else f"{parameters:,}")
 
 
 def _feature_contract(session: LoadedSession) -> None:

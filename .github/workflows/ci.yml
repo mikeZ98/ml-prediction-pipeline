@@ -63,7 +63,7 @@ jobs:
         run: uv run --no-sync mypy src/mlpp
 
       - name: Tests
-        # TensorFlow install dominates runtime, so the slow tests are nearly
+        # The torch install dominates runtime, so the slow tests are nearly
         # free on top of the fast ones — run the whole suite.
         run: uv run --no-sync pytest -q
 

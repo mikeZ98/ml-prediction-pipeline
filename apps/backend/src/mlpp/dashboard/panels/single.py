@@ -16,7 +16,7 @@ from mlpp.errors import MlppError
 from mlpp.preprocess import flag_out_of_range
 
 if TYPE_CHECKING:  # for the annotation only; the caller supplies a loaded model.
-    import keras
+    from mlpp.inference.onnx_model import OnnxModel
 
 from mlpp.session import LoadedSession
 
@@ -24,7 +24,7 @@ from mlpp.session import LoadedSession
 MAX_SIGMA = 3.0
 
 
-def render(session: LoadedSession, model: keras.Model) -> None:
+def render(session: LoadedSession, model: OnnxModel) -> None:
     st.subheader("Single-row inference")
     st.caption("Enter one row of inputs and score it. Nothing is written to disk.")
 

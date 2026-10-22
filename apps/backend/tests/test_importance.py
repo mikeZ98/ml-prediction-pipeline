@@ -1,8 +1,8 @@
 """Permutation importance.
 
-Almost all of this runs without TensorFlow: the loop is parameterised over a scorer
+Almost all of this runs without a model runtime: the loop is parameterised over a scorer
 callable, so a stub with known behaviour pins the algorithm's properties in the fast
-suite. Only the genuine Keras path is marked `slow`.
+suite. Only the genuine ONNX path is marked `slow`.
 """
 
 from __future__ import annotations
@@ -169,7 +169,7 @@ def test_the_caller_frame_is_never_mutated(fitted: Preprocessor, frame: pd.DataF
     reason="committed reference session is absent",
 )
 def test_end_to_end_against_the_committed_session() -> None:
-    """The real Keras path, once: a loaded model scoring a real dataset."""
+    """The real ONNX Runtime path, once: a loaded model scoring a real dataset."""
     from mlpp.data import read_table_auto
     from mlpp.predict import load_model, make_scorer
     from mlpp.predict_cli import columns_from

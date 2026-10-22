@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "created": "2026-07-29T13:30:35",
+  "schema_version": 2,
+  "created": "2026-10-22T10:43:08",
   "features": {
     "numeric_columns": [
       "feature_01",
@@ -37,8 +37,8 @@
   },
   "artifacts": [
     {
-      "role": "best_model",
-      "filename": "best_model.keras"
+      "role": "best_checkpoint",
+      "filename": "best_model.pt"
     },
     {
       "role": "training_log",
@@ -62,7 +62,7 @@
     },
     {
       "role": "stage_model",
-      "filename": "model_iter_01.keras"
+      "filename": "model_iter_01.pt"
     },
     {
       "role": "training_curves",
@@ -82,7 +82,7 @@
     },
     {
       "role": "stage_model",
-      "filename": "model_iter_02.keras"
+      "filename": "model_iter_02.pt"
     },
     {
       "role": "training_curves",
@@ -95,6 +95,10 @@
     {
       "role": "prediction_analysis",
       "filename": "prediction_analysis_tr02_te02.html"
+    },
+    {
+      "role": "best_model",
+      "filename": "best_model.onnx"
     },
     {
       "role": "metrics",

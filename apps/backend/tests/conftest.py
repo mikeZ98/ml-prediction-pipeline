@@ -1,4 +1,4 @@
-"""Shared fixtures. Nothing here imports TensorFlow — see tests marked `slow` for that."""
+"""Shared fixtures. Nothing here imports torch — see tests marked `slow` for that."""
 
 from __future__ import annotations
 

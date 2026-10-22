@@ -91,8 +91,8 @@ def test_directory_exists_before_features_are_known(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("builder", "stage_or_tag", "expected"),
     [
-        (stage_model_filename, 1, "model_iter_01.keras"),
-        (stage_model_filename, 12, "model_iter_12.keras"),
+        (stage_model_filename, 1, "model_iter_01.pt"),
+        (stage_model_filename, 12, "model_iter_12.pt"),
         (stage_history_filename, 2, "history_train_02.csv"),
         (training_curves_filename, "train_01", "training_curves_train_01.png"),
         (prediction_analysis_filename, "tr01_te02", "prediction_analysis_tr01_te02.html"),
@@ -105,7 +105,7 @@ def test_filename_builders(builder, stage_or_tag, expected) -> None:
 def test_register_returns_a_path_inside_the_session(tmp_path: Path) -> None:
     writer = SessionWriter(tmp_path / "session")
     path = writer.register(ROLE_STAGE_MODEL, stage_model_filename(1))
-    assert path == writer.session_dir / "model_iter_01.keras"
+    assert path == writer.session_dir / "model_iter_01.pt"
 
 
 # --- manifest construction -------------------------------------------------
@@ -121,9 +121,9 @@ def test_inventory_accumulates_across_stages(tmp_path: Path) -> None:
 
     manifest = read_manifest(writer.session_dir)
     assert manifest.filenames_for(ROLE_STAGE_MODEL) == (
-        "model_iter_01.keras",
-        "model_iter_02.keras",
-        "model_iter_03.keras",
+        "model_iter_01.pt",
+        "model_iter_02.pt",
+        "model_iter_03.pt",
     )
 
 
@@ -180,7 +180,7 @@ def test_flush_is_repeatable(tmp_path: Path) -> None:
     writer.register(ROLE_STAGE_MODEL, stage_model_filename(2))
     writer.flush()
     assert read_manifest(writer.session_dir).filenames_for(ROLE_STAGE_MODEL) == (
-        "model_iter_02.keras",
+        "model_iter_02.pt",
     )
 
 
@@ -464,11 +464,13 @@ def test_load_session_rejects_a_pre_manifest_directory(tmp_path: Path) -> None:
         load_session(legacy, ColumnConfig())
 
 
-def test_load_session_does_not_import_tensorflow(frame: pd.DataFrame, data_cfg: DataConfig) -> None:
+def test_load_session_does_not_import_a_model_runtime(
+    frame: pd.DataFrame, data_cfg: DataConfig
+) -> None:
     """Reading a session must never require the training stack.
 
     Asserted in a subprocess on purpose. `sys.modules` is process-global, so an
-    in-process check would pass or fail depending on whether a Keras test ran
+    in-process check would pass or fail depending on whether a torch test ran
     first — it would measure suite ordering, not this module's imports.
     """
     writer, _ = _write_session(frame, data_cfg)
@@ -484,7 +486,7 @@ def test_load_session_does_not_import_tensorflow(frame: pd.DataFrame, data_cfg: 
         )
         loaded = load_session(Path({str(writer.session_dir)!r}), cfg)
         assert loaded.preprocessor.n_features > 0
-        for banned in ("tensorflow", "keras"):
+        for banned in ("torch", "onnxruntime", "tensorflow", "keras"):
             assert banned not in sys.modules, banned + " was imported"
     """)
     result = subprocess.run(

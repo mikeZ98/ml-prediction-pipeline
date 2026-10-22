@@ -1,4 +1,4 @@
-"""End-to-end smoke tests. Slow: these actually fit a Keras model."""
+"""End-to-end smoke tests. Slow: these actually fit and export a PyTorch model."""
 
 from __future__ import annotations
 
@@ -11,8 +11,12 @@ import pytest
 from mlpp.config import PipelineConfig
 from mlpp.errors import DatasetError
 from mlpp.session import (
+    BEST_CHECKPOINT_FILE,
+    BEST_MODEL_FILE,
     MANIFEST_FILE,
     METRICS_FILE,
+    ROLE_BEST_CHECKPOINT,
+    ROLE_BEST_MODEL,
     ROLE_METRICS,
     ROLE_STAGE_MODEL,
     SCALER_FILE,
@@ -58,6 +62,8 @@ def test_manifest_inventory_matches_files_on_disk(pipeline_cfg: PipelineConfig) 
         assert (session / entry.filename).is_file(), f"{entry.filename} listed but absent"
     assert manifest.filenames_for(ROLE_METRICS) == (METRICS_FILE,)
     assert manifest.filenames_for(ROLE_STAGE_MODEL) == (stage_model_filename(1),)
+    assert manifest.filenames_for(ROLE_BEST_MODEL) == (BEST_MODEL_FILE,)
+    assert manifest.filenames_for(ROLE_BEST_CHECKPOINT) == (BEST_CHECKPOINT_FILE,)
 
 
 def test_manifest_records_the_feature_contract_once(pipeline_cfg: PipelineConfig) -> None:
@@ -161,7 +167,8 @@ def test_pipeline_trains_without_test_data(pipeline_cfg: PipelineConfig) -> None
         csv.unlink()
     result = run_pipeline(pipeline_cfg, verbose=0)
     assert result.rows == ()
-    assert (result.session_dir / "model_iter_01.keras").is_file()
+    assert (result.session_dir / stage_model_filename(1)).is_file()
+    assert (result.session_dir / BEST_MODEL_FILE).is_file()
 
 
 def test_cli_runs_end_to_end(pipeline_cfg: PipelineConfig, tmp_path: Path) -> None:
@@ -209,3 +216,31 @@ def test_cli_reports_missing_data_as_error(tmp_path: Path, capsys) -> None:
     )
     assert exit_code == 1
     assert "no CSV files" in capsys.readouterr().err
+
+
+def test_the_exported_onnx_model_reproduces_the_evaluation(pipeline_cfg: PipelineConfig) -> None:
+    """The served graph and the in-memory model the metrics came from must agree.
+
+    Evaluation runs the PyTorch model; serving runs ONNX. Re-scoring the test file
+    through the exported graph and recomputing RMSE pins the two together.
+    """
+    from mlpp.metrics import regression_metrics
+    from mlpp.pipeline import run_pipeline
+    from mlpp.predict import load_model, score_frame
+    from mlpp.session import load_session
+
+    result = run_pipeline(pipeline_cfg, verbose=0)
+    session = load_session(result.session_dir, pipeline_cfg.data.columns)
+    frame = pd.read_csv(pipeline_cfg.data.test_dir / "test_A.csv")
+
+    scored = score_frame(session, load_model(session), frame)
+    target = frame[pipeline_cfg.data.columns.output_column].to_numpy()
+    rmse = regression_metrics(target, scored.predictions).rmse
+    assert rmse == pytest.approx(result.rows[0].metrics.rmse, rel=1e-4)
+
+
+def test_cli_device_flag_reaches_the_training_config(pipeline_cfg: PipelineConfig) -> None:
+    from mlpp.cli import build_parser, config_from_args
+
+    args = build_parser().parse_args(["--device", "cpu"])
+    assert config_from_args(args).train.device == "cpu"
