@@ -9,6 +9,7 @@ them only when needed.
 from mlpp.errors import (
     ArtifactError,
     DatasetError,
+    InferenceError,
     MlppError,
     NotFittedError,
     SchemaError,
@@ -20,6 +21,7 @@ __version__ = "0.1.0"
 __all__ = [
     "ArtifactError",
     "DatasetError",
+    "InferenceError",
     "MlppError",
     "NotFittedError",
     "SchemaError",

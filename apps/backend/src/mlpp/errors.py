@@ -28,3 +28,11 @@ class SchemaVersionError(ArtifactError):
     cannot honestly interpret it. Artifacts are cheap to regenerate, so the
     contract rejects rather than coerces.
     """
+
+
+class InferenceError(MlppError):
+    """The model runtime failed on an input that had already passed validation.
+
+    Distinct from SchemaError: the request was well-formed, so this is the
+    service's fault, not the caller's.
+    """
