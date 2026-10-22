@@ -41,6 +41,8 @@ monitor = [
 [project.scripts]
 mlpp-train = "mlpp.cli:main"
 mlpp-predict = "mlpp.predict_cli:main"
+# Needs the `serve` extra.
+mlpp-serve = "mlpp.inference.api:main"
 
 [dependency-groups]
 dashboard = [
