@@ -86,6 +86,8 @@ filterwarnings = [
     # change — see context/foundation/health-check.md, "A numpy deprecation sits directly on the
     # artifact-loading path". Delete this line when that change lands.
     "ignore:Setting the shape on a NumPy array has been deprecated:DeprecationWarning:joblib.*",
+    # MLflow's SQLAlchemy tracking store (third-party, not on mlpp's code path).
+    "ignore:The ``noload`` loader strategy is deprecated:DeprecationWarning",
 ]
 
 [tool.ruff]

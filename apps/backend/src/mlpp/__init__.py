@@ -15,6 +15,7 @@ from mlpp.errors import (
     NotFittedError,
     SchemaError,
     SchemaVersionError,
+    TrackingError,
     TrainingError,
 )
 
@@ -28,6 +29,7 @@ __all__ = [
     "NotFittedError",
     "SchemaError",
     "SchemaVersionError",
+    "TrackingError",
     "TrainingError",
     "__version__",
 ]

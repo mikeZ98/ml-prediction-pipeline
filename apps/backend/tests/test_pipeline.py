@@ -191,6 +191,7 @@ def test_cli_runs_end_to_end(pipeline_cfg: PipelineConfig, tmp_path: Path) -> No
             "--batch-size",
             "16",
             "--no-plots",
+            "--no-tracking",
             "--quiet",
         ]
     )
@@ -211,6 +212,7 @@ def test_cli_reports_missing_data_as_error(tmp_path: Path, capsys) -> None:
             str(tmp_path / "TEST"),
             "--output-dir",
             str(tmp_path / "OUTPUTS"),
+            "--no-tracking",
             "--quiet",
         ]
     )

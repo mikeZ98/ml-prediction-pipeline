@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -26,6 +26,7 @@ from mlpp.session import (
     ROLE_STAGE_MODEL,
     ROLE_TRAINING_CURVES,
     ROLE_TRAINING_LOG,
+    SCHEMA_VERSION,
     TRAINING_LOG_FILE,
     FeatureContract,
     SessionWriter,
@@ -37,6 +38,8 @@ from mlpp.session import (
 )
 from mlpp.training.export import export_onnx
 from mlpp.training.loop import (
+    EpochCallback,
+    EpochMetrics,
     FitResult,
     active_sample_weights,
     fit,
@@ -45,6 +48,7 @@ from mlpp.training.loop import (
     set_seed,
 )
 from mlpp.training.model import CnnBiGruRegressor, build_model, count_parameters
+from mlpp.training.tracking import Tracker, start_tracking
 
 log = logging.getLogger(__name__)
 
@@ -69,12 +73,29 @@ class EvaluationRow:
 class PipelineResult:
     session_dir: Path
     rows: tuple[EvaluationRow, ...]
+    #: The MLflow run that recorded this session, when tracking was enabled.
+    run_id: str | None = None
+
+
+@dataclass(slots=True)
+class _Trained:
+    """What the stage loop leaves behind for export, persistence and tracking."""
+
+    model: CnnBiGruRegressor | None = None
+    last_x: np.ndarray | None = None
+    rows: list[EvaluationRow] = field(default_factory=list)
+    epochs_done: int = 0
 
 
 def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
     """Train sequentially over the TRAIN CSVs, evaluating against TEST after each stage.
 
-    Raises DatasetError when TRAIN/ holds no CSVs — there is nothing to fit.
+    With `cfg.tracking.enabled`, the whole run is recorded as one MLflow run named
+    after the session directory: params up front, metrics per epoch and per
+    evaluation, then the session artifacts and the ONNX model once they exist.
+
+    Raises DatasetError when TRAIN/ holds no CSVs — there is nothing to fit — and
+    TrackingError when tracking is enabled but the store cannot be reached.
     """
     set_seed(cfg.train.seed)
     train_files = discover_csvs(cfg.data.train_dir)
@@ -91,10 +112,35 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
     session_dir = writer.session_dir
     log.info("session directory: %s", session_dir)
 
+    with start_tracking(cfg.tracking, run_name=session_dir.name) as tracker:
+        tracker.set_tags(
+            {"mlpp.session": session_dir.name, "mlpp.schema_version": str(SCHEMA_VERSION)}
+        )
+        tracker.log_params(_run_params(cfg, train_files, test_files))
+
+        trained = _train_stages(cfg, writer, train_files, test_files, tracker, verbose)
+        onnx_path = _persist(writer, trained, cfg)
+
+        if trained.rows:
+            tracker.log_metrics(_final_stage_means(trained.rows))
+        if writer.has_features:
+            tracker.log_session(session_dir)
+        if onnx_path is not None and trained.last_x is not None:
+            tracker.log_onnx_model(onnx_path, input_example=trained.last_x[:5])
+
+    return PipelineResult(session_dir=session_dir, rows=tuple(trained.rows), run_id=tracker.run_id)
+
+
+def _train_stages(
+    cfg: PipelineConfig,
+    writer: SessionWriter,
+    train_files: list[Path],
+    test_files: list[Path],
+    tracker: Tracker,
+    verbose: int,
+) -> _Trained:
     pre = Preprocessor(cfg.data.columns, use_onehot=cfg.train.use_onehot)
-    model: CnnBiGruRegressor | None = None
-    last_x: np.ndarray | None = None
-    rows: list[EvaluationRow] = []
+    trained = _Trained()
 
     for stage, train_path in enumerate(train_files, start=1):
         frame = read_csv_auto(train_path)
@@ -102,6 +148,7 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
         if not pre.is_fitted:
             pre.fit(frame)
             writer.set_features(_contract_from(pre))
+            tracker.log_params({"data.n_features": pre.n_features})
         x_train, y_train = pre.transform(frame)
         if y_train is None:
             log.warning(
@@ -109,49 +156,112 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
             )
             continue
 
-        if model is None:
-            model = build_model(pre.n_features)
+        if trained.model is None:
+            trained.model = build_model(pre.n_features)
+            tracker.log_params({"model.n_parameters": count_parameters(trained.model)})
             if verbose:
-                log.info("model (%d parameters):\n%s", count_parameters(model), model)
+                log.info(
+                    "model (%d parameters):\n%s", count_parameters(trained.model), trained.model
+                )
 
         log.info(
             "stage %d/%d: fitting on %s %s", stage, len(train_files), train_path.name, x_train.shape
         )
         result = fit(
-            model,
+            trained.model,
             x_train,
             y_train,
             cfg.train,
             checkpoint_path=writer.path_for(BEST_CHECKPOINT_FILE),
             log_path=writer.path_for(TRAINING_LOG_FILE),
             sample_weight=active_sample_weights(x_train, pre, cfg.train),
+            on_epoch=_epoch_logger(tracker, stage, offset=trained.epochs_done),
             verbose=verbose,
         )
+        trained.epochs_done += len(result.history)
         # Written by the fit loop as it runs, so record them rather than name them.
         writer.register(ROLE_BEST_CHECKPOINT, BEST_CHECKPOINT_FILE)
         writer.register(ROLE_TRAINING_LOG, TRAINING_LOG_FILE)
-        _save_stage_artifacts(model, pre, result, writer, stage, write_plots=cfg.eval.write_plots)
-        rows.extend(_evaluate(model, pre, cfg, test_files, writer, stage, train_path.name))
-        last_x = x_train
+        _save_stage_artifacts(
+            trained.model, pre, result, writer, stage, write_plots=cfg.eval.write_plots
+        )
+        stage_rows = _evaluate(trained.model, pre, cfg, test_files, writer, stage, train_path.name)
+        tracker.log_metrics(_evaluation_metrics(stage, stage_rows), step=stage)
+        trained.rows.extend(stage_rows)
+        trained.last_x = x_train
+    return trained
 
-    if model is not None and last_x is not None:
+
+def _persist(writer: SessionWriter, trained: _Trained, cfg: PipelineConfig) -> Path | None:
+    """Export the ONNX model, write the metrics table and flush the manifest.
+
+    Returns the ONNX path, or None when no stage produced a model.
+    """
+    onnx_path = None
+    if trained.model is not None and trained.last_x is not None:
         # Exported once, from the weights the last stage settled on — the same model
         # the evaluation rows describe. Verified against ONNX Runtime on real rows.
         onnx_path = export_onnx(
-            model, writer.register(ROLE_BEST_MODEL, BEST_MODEL_FILE), sample=last_x[:256]
+            trained.model,
+            writer.register(ROLE_BEST_MODEL, BEST_MODEL_FILE),
+            sample=trained.last_x[:256],
         )
         log.info("ONNX model written to %s", onnx_path)
 
-    if rows:
+    if trained.rows:
         metrics_path = writer.register(ROLE_METRICS, METRICS_FILE)
-        pd.DataFrame([r.as_dict() for r in rows]).to_csv(metrics_path, index=False)
+        pd.DataFrame([r.as_dict() for r in trained.rows]).to_csv(metrics_path, index=False)
         log.info("metrics written to %s", metrics_path)
 
     if writer.has_features:
         log.info("manifest written to %s", writer.flush())
     else:
         log.warning("no file in %s could be fitted — no manifest written", cfg.data.train_dir)
-    return PipelineResult(session_dir=session_dir, rows=tuple(rows))
+    return onnx_path
+
+
+def _epoch_logger(tracker: Tracker, stage: int, *, offset: int) -> EpochCallback:
+    """Per-epoch callback stepping a global epoch counter across stages."""
+
+    def log_epoch(metrics: EpochMetrics) -> None:
+        tracker.log_epoch(metrics, stage=stage, step=offset + metrics.epoch)
+
+    return log_epoch
+
+
+def _run_params(
+    cfg: PipelineConfig, train_files: list[Path], test_files: list[Path]
+) -> dict[str, object]:
+    columns = cfg.data.columns
+    params: dict[str, object] = {f"train.{k}": v for k, v in asdict(cfg.train).items()}
+    params |= {f"eval.{k}": v for k, v in asdict(cfg.eval).items()}
+    params |= {
+        "data.input_columns": columns.input_columns,
+        "data.output_column": columns.output_column,
+        "data.categorical_columns": columns.categorical_columns or "-",
+        "data.strict_schema": columns.strict_schema,
+        "data.train_files": [p.name for p in train_files],
+        "data.test_files": [p.name for p in test_files] or "-",
+    }
+    return params
+
+
+def _evaluation_metrics(stage: int, rows: list[EvaluationRow]) -> dict[str, float]:
+    return {
+        f"eval.stage_{stage:02d}.{Path(row.test_file).stem}.{name}": value
+        for row in rows
+        for name, value in row.metrics.as_dict().items()
+    }
+
+
+def _final_stage_means(rows: list[EvaluationRow]) -> dict[str, float]:
+    """Mean test metrics of the last stage — the model that was exported."""
+    last = [row for row in rows if row.train_file == rows[-1].train_file]
+    names = last[0].metrics.as_dict().keys()
+    return {
+        f"test_{name}_mean": float(np.mean([row.metrics.as_dict()[name] for row in last]))
+        for name in names
+    }
 
 
 def _contract_from(pre: Preprocessor) -> FeatureContract:

@@ -34,6 +34,10 @@ class TrainingError(MlppError):
     """Training could not produce a usable model (e.g. the loss went non-finite)."""
 
 
+class TrackingError(MlppError):
+    """The experiment tracker could not be reached or refused the run."""
+
+
 class InferenceError(MlppError):
     """The model runtime failed on an input that had already passed validation.
 
