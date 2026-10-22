@@ -53,5 +53,5 @@ that what the manifest claims is actually on disk. Scorers resolve the model thr
 `best_model` role, and `load_onnx_model` cross-checks the graph's feature width against the
 manifest.
 
-Sessions carry a `SCHEMA_VERSION` (currently 2); a mismatch raises `SchemaVersionError` rather
+Sessions carry a `SCHEMA_VERSION` (currently 3); a mismatch raises `SchemaVersionError` rather
 than being migrated. If you add an artifact, register it with a role, or no reader will see it.

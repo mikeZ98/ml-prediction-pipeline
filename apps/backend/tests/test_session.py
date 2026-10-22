@@ -295,6 +295,30 @@ def test_malformed_artifact_entry_is_rejected(tmp_path: Path) -> None:
         read_manifest(session)
 
 
+@pytest.mark.parametrize("session_id", [None, "", "   ", 42])
+def test_a_missing_or_blank_session_id_is_rejected(tmp_path: Path, session_id: object) -> None:
+    session = tmp_path / "session"
+    session.mkdir()
+    payload: dict[str, object] = {"schema_version": SCHEMA_VERSION, "features": CONTRACT.as_dict()}
+    if session_id is not None:
+        payload["session_id"] = session_id
+    (session / MANIFEST_FILE).write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ArtifactError, match="'session_id' must be a non-empty string"):
+        read_manifest(session)
+
+
+def test_session_id_is_the_creation_name_and_survives_a_move(tmp_path: Path) -> None:
+    """Identity is recorded once, at creation; renaming or mounting the directory
+    elsewhere must not change which run it claims to be."""
+    writer = SessionWriter.create(tmp_path, now=datetime(2026, 7, 29, 8, 30, 15))
+    writer.set_features(CONTRACT)
+    writer.flush()
+    assert writer.session_id == "2026-07-29_08-30-15"
+
+    moved = writer.session_dir.rename(tmp_path / "session")
+    assert read_manifest(moved).session_id == "2026-07-29_08-30-15"
+
+
 def test_schema_version_error_is_an_artifact_error() -> None:
     """Callers that only care about 'bad artifact' should not need the subclass."""
     assert issubclass(SchemaVersionError, ArtifactError)

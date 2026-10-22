@@ -112,9 +112,9 @@ def run_pipeline(cfg: PipelineConfig, verbose: int = 1) -> PipelineResult:
     session_dir = writer.session_dir
     log.info("session directory: %s", session_dir)
 
-    with start_tracking(cfg.tracking, run_name=session_dir.name) as tracker:
+    with start_tracking(cfg.tracking, run_name=writer.session_id) as tracker:
         tracker.set_tags(
-            {"mlpp.session": session_dir.name, "mlpp.schema_version": str(SCHEMA_VERSION)}
+            {"mlpp.session": writer.session_id, "mlpp.schema_version": str(SCHEMA_VERSION)}
         )
         tracker.log_params(_run_params(cfg, train_files, test_files))
 

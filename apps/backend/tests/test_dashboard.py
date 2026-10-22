@@ -330,6 +330,7 @@ def _minimal_session(
 
     manifest = {
         "schema_version": schema_version,
+        "session_id": "session",
         "created": "2026-08-04T00:00:00",
         "features": {
             "numeric_columns": list(pre.schema.numeric),

@@ -154,7 +154,7 @@ def test_readiness_reports_the_served_session(client: TestClient, session: Loade
     response = client.get("/health/ready")
     assert response.status_code == 200
     assert response.json()["model"] == {
-        "session": session.session_dir.name,
+        "session": session.manifest.session_id,
         "created": session.manifest.created,
         "schema_version": session.manifest.schema_version,
     }
@@ -577,3 +577,21 @@ def test_settings_enable_capture_through_the_payload_dir(
     with TestClient(create_app(settings)) as client:
         assert _post(client, {"records": [_row()]}).status_code == 200
     assert len(list(payload_dir.glob("payloads-*.jsonl"))) == 1
+
+
+def test_the_reported_session_is_the_manifest_id_not_the_mount_path(
+    session: LoadedSession, tmp_path: Path
+) -> None:
+    """In a container the session is mounted at /models/session; the API must still
+    say which training run is answering, not echo the mount point."""
+    import shutil
+
+    mounted = tmp_path / "models" / "session"
+    shutil.copytree(session.session_dir, mounted)
+    settings = ServiceSettings(session_dir=mounted)
+
+    with TestClient(create_app(settings)) as client:
+        ready = client.get("/health/ready").json()["model"]["session"]
+        predicted = _post(client, {"records": [_row()]}).json()["model"]["session"]
+
+    assert ready == predicted == "2026-01-01_00-00-00"

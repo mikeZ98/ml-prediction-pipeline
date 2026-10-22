@@ -27,7 +27,9 @@ from mlpp.preprocess import FeatureSchema, FittedState, Preprocessor
 #: Bumped whenever the manifest layout changes incompatibly. The loader rejects
 #: anything it does not recognise rather than guessing.
 #: v2: PyTorch training — the scoring model is ONNX, checkpoints are torch state dicts.
-SCHEMA_VERSION: Final = 2
+#: v3: `session_id` — the session's identity, recorded at creation so it survives the
+#:     directory being renamed, copied or mounted elsewhere (e.g. /models/session).
+SCHEMA_VERSION: Final = 3
 
 MANIFEST_FILE: Final = "manifest.json"
 SESSION_FORMAT: Final = "%Y-%m-%d_%H-%M-%S"
@@ -136,6 +138,9 @@ class SessionManifest:
     """What a session directory contains and which contract it was written under."""
 
     schema_version: int
+    #: The directory name the session was created under. Identity comes from here,
+    #: never from wherever the directory happens to live now.
+    session_id: str
     created: str
     features: FeatureContract
     artifacts: tuple[ArtifactEntry, ...]
@@ -143,6 +148,7 @@ class SessionManifest:
     def as_dict(self) -> dict[str, Any]:
         return {
             "schema_version": self.schema_version,
+            "session_id": self.session_id,
             "created": self.created,
             "features": self.features.as_dict(),
             "artifacts": [a.as_dict() for a in self.artifacts],
@@ -166,6 +172,7 @@ class SessionWriter:
     def __init__(self, session_dir: Path, created: datetime | None = None) -> None:
         self._dir = session_dir
         self._dir.mkdir(parents=True, exist_ok=True)
+        self._session_id = session_dir.name
         self._features: FeatureContract | None = None
         self._artifacts: list[ArtifactEntry] = []
         self._created = (created or datetime.now()).isoformat(timespec="seconds")
@@ -184,6 +191,10 @@ class SessionWriter:
     @property
     def session_dir(self) -> Path:
         return self._dir
+
+    @property
+    def session_id(self) -> str:
+        return self._session_id
 
     @property
     def has_features(self) -> bool:
@@ -218,6 +229,7 @@ class SessionWriter:
             raise ArtifactError("cannot build a manifest before the feature contract is set")
         return SessionManifest(
             schema_version=SCHEMA_VERSION,
+            session_id=self._session_id,
             created=self._created,
             features=self._features,
             artifacts=tuple(self._artifacts),
@@ -295,11 +307,17 @@ def read_manifest(session_dir: Path) -> SessionManifest:
 
     if "features" not in payload:
         raise ArtifactError(f"{path} is missing 'features'")
+    features = FeatureContract.from_dict(payload["features"], path)
+    artifacts = _entries_from(payload.get("artifacts", []), path)
+    session_id = payload.get("session_id")
+    if not isinstance(session_id, str) or not session_id.strip():
+        raise ArtifactError(f"{path}: 'session_id' must be a non-empty string, got {session_id!r}")
     return SessionManifest(
         schema_version=version,
+        session_id=session_id,
         created=str(payload.get("created", "")),
-        features=FeatureContract.from_dict(payload["features"], path),
-        artifacts=_entries_from(payload.get("artifacts", []), path),
+        features=features,
+        artifacts=artifacts,
     )
 
 
