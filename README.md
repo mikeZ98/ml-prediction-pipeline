@@ -339,6 +339,10 @@ uv run ruff check . && uv run ruff format --check .
 uv run mypy src/mlpp          # strict
 ```
 
+The full suite is 368 tests (295 test functions; parametrized cases counted separately) at
+90.7% branch coverage of `mlpp`, measured with `uv run pytest --cov=mlpp --cov-branch` (CI does
+not enforce a coverage floor yet).
+
 The API tests run the real app, validation, preprocessor and inverse transform, and mock only the
 ONNX `InferenceSession`. A tiny real ONNX graph, built with `onnx.helper`, covers genuine ONNX
 Runtime execution in the fast suite.
