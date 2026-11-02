@@ -25,7 +25,7 @@ NOTEBOOK = REPO_ROOT / "notebooks" / "01_exploration_and_baseline.ipynb"
 CELLS: list[tuple[str, str]] = [
     (
         "markdown",
-        """# Sequential time-series regression — exploration & baseline
+        """# Sequential tabular regression — exploration & baseline
 
 A demonstration report over the committed reference run in `OUTPUTS/example/`.
 

@@ -1,6 +1,6 @@
-# ML Prediction Pipeline — Time-Series Regression (CNN + Bi-GRU)
+# ML Prediction Pipeline — Tabular Regression Pipeline (with Temporal/Drift Monitoring)
 
-An end-to-end MLOps pipeline for **time-series / tabular regression**: train in PyTorch, track
+An end-to-end MLOps pipeline for **tabular regression** (Conv1D + Bi-GRU over the feature axis): train in PyTorch, track
 in MLflow, serve through ONNX Runtime behind an async FastAPI service, and watch live traffic
 for data drift with Evidently.
 

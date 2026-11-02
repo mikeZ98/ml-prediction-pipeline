@@ -1,6 +1,6 @@
 # mlpp — backend
 
-Training, serving and monitoring for time-series & tabular regression (Conv1D → Bi-GRU → Dense):
+Training, serving and drift monitoring for tabular regression (Conv1D → Bi-GRU → Dense):
 PyTorch for training, ONNX Runtime for every scorer.
 
 ```bash

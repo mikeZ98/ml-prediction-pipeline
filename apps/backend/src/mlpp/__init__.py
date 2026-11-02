@@ -1,4 +1,4 @@
-"""mlpp — time-series / tabular regression pipeline.
+"""mlpp — tabular regression pipeline.
 
 Import layers deliberately: `config`, `data`, `preprocess`, `metrics`, `session`,
 `errors`, `importance` and `schemas` are framework-free and cheap to import.
