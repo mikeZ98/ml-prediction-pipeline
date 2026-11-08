@@ -1,5 +1,11 @@
 # ML Prediction Pipeline — Tabular Regression Pipeline (with Temporal/Drift Monitoring)
 
+[![CI](https://github.com/mikeZ98/ml-prediction-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/mikeZ98/ml-prediction-pipeline/actions/workflows/ci.yml)
+[![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)](apps/backend/pyproject.toml)
+[![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](apps/backend/pyproject.toml)
+[![mypy strict](https://img.shields.io/badge/types-mypy%20strict-blue.svg)](apps/backend/pyproject.toml)
+[![Committer mikeZ98](https://img.shields.io/badge/committer-mikeZ98-lightgrey.svg)](https://github.com/mikeZ98/ml-prediction-pipeline/commits/main)
+
 An end-to-end MLOps pipeline for **tabular regression** (Conv1D + Bi-GRU over the feature axis): train in PyTorch, track
 in MLflow, serve through ONNX Runtime behind an async FastAPI service, and watch live traffic
 for data drift with Evidently.
